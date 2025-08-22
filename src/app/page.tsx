@@ -3,41 +3,64 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ChatLayout from '@/components/chat/chat-layout';
-import { Message, OrderItem, Product } from '@/lib/types';
+import { Message, OrderItem, UserDetails } from '@/lib/types';
 import { getInitialGreeting, getAiResponse, submitOrder } from './actions';
 import { menu } from '@/lib/menu';
+
+const USER_DETAILS_KEY = 'utopizap_user_details';
+const CHAT_HISTORY_KEY = 'utopizap_chat_history';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [order, setOrder] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAwaitingOrderDetails, setIsAwaitingOrderDetails] = useState(false);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const menuRef = useRef(menu);
 
   useEffect(() => {
-    const fetchGreeting = async () => {
-      try {
-        const greeting = await getInitialGreeting();
-        setMessages([{
-          id: 'ai-greeting',
-          role: 'ai',
-          content: greeting,
-          timestamp: new Date(),
-        }]);
-      } catch (error) {
-        console.error("Failed to get initial greeting:", error);
-        setMessages([{
-          id: 'error-greeting',
-          role: 'ai',
-          content: "Olá! Tivemos um pequeno problema para conectar. Por favor, tente recarregar a página.",
-          timestamp: new Date(),
-        }]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchGreeting();
+    // Load data from localStorage on initial mount
+    const storedUserDetails = localStorage.getItem(USER_DETAILS_KEY);
+    if (storedUserDetails) {
+      setUserDetails(JSON.parse(storedUserDetails));
+    }
+    
+    const storedChatHistory = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (storedChatHistory) {
+      setMessages(JSON.parse(storedChatHistory));
+      setIsLoading(false);
+    } else {
+      const fetchGreeting = async () => {
+        try {
+          const greeting = await getInitialGreeting();
+          const initialMessage: Message = {
+            id: 'ai-greeting',
+            role: 'ai',
+            content: greeting,
+            timestamp: new Date(),
+          };
+          setMessages([initialMessage]);
+          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify([initialMessage]));
+        } catch (error) {
+          console.error("Failed to get initial greeting:", error);
+          setMessages([{
+            id: 'error-greeting',
+            role: 'ai',
+            content: "Olá! Tivemos um pequeno problema para conectar. Por favor, tente recarregar a página.",
+            timestamp: new Date(),
+          }]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchGreeting();
+    }
   }, []);
+
+  const updateChatHistory = (updatedMessages: Message[]) => {
+    setMessages(updatedMessages);
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
+  }
 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
@@ -48,7 +71,8 @@ export default function Home() {
       content: text,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    updateChatHistory(newMessages);
     setIsLoading(true);
 
     try {
@@ -67,7 +91,7 @@ export default function Home() {
          setIsAwaitingOrderDetails(true);
       }
 
-      setMessages(prev => [...prev, aiMessage]);
+      updateChatHistory([...newMessages, aiMessage]);
     } catch (error) {
       console.error("Failed to get AI response:", error);
       const errorMessage: Message = {
@@ -76,11 +100,11 @@ export default function Home() {
         content: "Desculpe, estou com dificuldades para processar sua solicitação. Poderia tentar novamente?",
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      updateChatHistory([...newMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [order]);
+  }, [messages, order]);
 
   const handleAddToOrder = useCallback((productId: string) => {
     const product = menuRef.current.items.find(item => item.id === productId);
@@ -108,12 +132,17 @@ export default function Home() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, confirmationMessage]);
-    handleSendMessage(`Adicionei 1 ${product.name} ao pedido.`);
-  }, [handleSendMessage]);
+    const updatedMessages = [...messages, confirmationMessage];
+    updateChatHistory(updatedMessages);
+    // Don't call handleSendMessage here to avoid double-messaging.
+    // The confirmation itself is enough feedback.
+  }, [messages, handleSendMessage]);
 
-  const handleSubmitOrder = async (data: { name: string, phone: string }) => {
+  const handleSubmitOrder = async (data: UserDetails) => {
     setIsLoading(true);
+    setUserDetails(data);
+    localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(data));
+    
     try {
       await submitOrder({
         customer: data,
@@ -127,24 +156,39 @@ export default function Home() {
         content: `Perfeito, ${data.name}! Seu pedido foi confirmado e já está sendo preparado. ✅\n\nQualquer novidade, avisaremos no número ${data.phone}. Obrigado por escolher o UTÓPICOS!`,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, finalMessage]);
+      updateChatHistory([...messages, finalMessage]);
       setOrder([]);
       setIsAwaitingOrderDetails(false);
+
+      // Clear chat for next order after a delay
+      setTimeout(() => {
+        const fetchGreeting = async () => {
+            const greeting = await getInitialGreeting();
+            const initialMessage: Message = {
+                id: 'ai-greeting-new',
+                role: 'ai',
+                content: `${greeting} O que vamos pedir hoje?`,
+                timestamp: new Date(),
+            };
+            updateChatHistory([initialMessage]);
+        };
+        fetchGreeting();
+      }, 5000);
+
+
     } catch (error) {
       console.error('Failed to submit order', error);
-      // Inform user about the error
-       const errorMessage: Message = {
+      const errorMessage: Message = {
         id: `error-submit-${Date.now()}`,
         role: 'ai',
         content: "Tivemos um problema ao finalizar seu pedido. Por favor, revise os dados e tente novamente.",
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, errorMessage]);
+      updateChatHistory([...messages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   }
-
 
   return (
     <ChatLayout
@@ -155,6 +199,7 @@ export default function Home() {
       onSendMessage={handleSendMessage}
       onAddToOrder={handleAddToOrder}
       onSubmitOrder={handleSubmitOrder}
+      userDetails={userDetails}
     />
   );
 }

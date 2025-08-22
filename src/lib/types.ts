@@ -52,11 +52,13 @@ export interface Menu {
   items: Product[];
 }
 
+export interface UserDetails {
+  name: string;
+  phone: string;
+}
+
 export interface Order {
-  customer: {
-    name: string;
-    phone: string;
-  };
+  customer: UserDetails;
   items: OrderItem[];
   total: number;
 }

@@ -2,10 +2,11 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Message, OrderItem } from '@/lib/types';
 import MessageBubble from './message-bubble';
-import TypingIndicator from './typing-indicator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { OrderSummaryCardSkeleton, ChatBubbleSkeleton } from './skeletons';
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -13,7 +14,6 @@ interface ChatMessagesProps {
   isLoading: boolean;
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
-  onSubmitOrder: (data: { name: string; phone: string }) => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({ 
@@ -22,33 +22,36 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     isLoading,
     onSendMessage,
     onAddToOrder,
-    onSubmitOrder
  }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
+    const viewport = viewportRef.current;
+    if (viewport) {
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
         behavior: 'smooth',
       });
     }
   }, [messages, isLoading]);
 
   return (
-    <ScrollArea className="flex-1" ref={scrollAreaRef}>
-      <div className="p-4 space-y-6">
-        {messages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            order={order}
-            onSendMessage={onSendMessage}
-            onAddToOrder={onAddToOrder}
-            onSubmitOrder={onSubmitOrder}
-          />
-        ))}
-        {isLoading && <TypingIndicator />}
+    <ScrollArea className="flex-1" viewportRef={viewportRef}>
+      <div className="p-4 sm:p-6 space-y-6">
+        <AnimatePresence initial={false}>
+          {messages.map((message, index) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              order={order}
+              onSendMessage={onSendMessage}
+              onAddToOrder={onAddToOrder}
+              isLast={index === messages.length - 1}
+            />
+          ))}
+        </AnimatePresence>
+        {isLoading && <ChatBubbleSkeleton />}
       </div>
     </ScrollArea>
   );

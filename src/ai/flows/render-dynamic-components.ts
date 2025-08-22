@@ -11,7 +11,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 // Define Zod schema for product card
 const ProductCardSchema = z.object({
@@ -66,7 +66,7 @@ const renderDynamicComponentsPrompt = ai.definePrompt({
         "imageUrl": "url_to_alcatra_image",
         "name": "Espetinho de Alcatra",
         "description": "Delicioso espetinho de alcatra.",
-        "price": 10.00,
+        "price": 18.00,
         "action": "add_alcatra"
       },
       {
@@ -74,7 +74,7 @@ const renderDynamicComponentsPrompt = ai.definePrompt({
         "imageUrl": "url_to_frango_image",
         "name": "Espetinho de Frango",
         "description": "Saboroso espetinho de frango.",
-        "price": 8.00,
+        "price": 15.00,
         "action": "add_frango"
       },
       {

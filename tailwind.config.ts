@@ -1,4 +1,5 @@
 
+const {fontFamily} = require('tailwindcss/defaultTheme');
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -18,9 +19,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['PT Sans', 'sans-serif'],
-        headline: ['PT Sans', 'sans-serif'],
-        code: ['monospace'],
+        sans: ['var(--font-sans)', ...fontFamily.sans],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -103,5 +102,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), require("framer-motion")],
 } satisfies Config;

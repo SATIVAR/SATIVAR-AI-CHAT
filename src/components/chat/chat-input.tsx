@@ -4,7 +4,9 @@
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SendHorizonal } from 'lucide-react';
+import { SendHorizonal, CornerDownLeft } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+
 
 interface ChatInputProps {
   onSendMessage: (text: string) => void;
@@ -23,20 +25,37 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="relative flex items-center w-full">
       <Input
         type="text"
-        placeholder="Digite sua mensagem..."
+        placeholder="Diga olá para começar..."
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            handleSubmit(e);
+          }
+        }}
         disabled={isLoading}
-        className="flex-1 bg-white focus:bg-white dark:bg-slate-800 dark:focus:bg-slate-800"
+        className="flex-1 pr-14 h-12 rounded-full bg-secondary focus:bg-background border-transparent focus-visible:ring-primary focus-visible:ring-2"
         autoComplete="off"
       />
-      <Button type="submit" size="icon" disabled={isLoading || !inputText.trim()}>
-        <SendHorizonal />
-        <span className="sr-only">Enviar</span>
-      </Button>
+      <AnimatePresence>
+        {inputText.trim() && (
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            className="absolute right-2.5 flex items-center"
+          >
+            <Button type="submit" size="icon" className="rounded-full w-9 h-9" disabled={isLoading || !inputText.trim()}>
+              <SendHorizonal size={18} />
+              <span className="sr-only">Enviar</span>
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </form>
   );
 };
