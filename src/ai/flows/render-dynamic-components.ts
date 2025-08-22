@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -14,7 +15,7 @@ import {z} from 'genkit';
 
 // Define Zod schema for product card
 const ProductCardSchema = z.object({
-  type: z.literal('productCard'),
+  type: z.string().describe("The type of the component, which should be 'productCard'."),
   imageUrl: z.string().describe('URL of the product image.'),
   name: z.string().describe('Name of the product.'),
   description: z.string().describe('Short description of the product.'),
@@ -24,7 +25,7 @@ const ProductCardSchema = z.object({
 
 // Define Zod schema for quick reply button
 const QuickReplyButtonSchema = z.object({
-  type: z.literal('quickReplyButton'),
+  type: z.string().describe("The type of the component, which should be 'quickReplyButton'."),
   label: z.string().describe('Label of the quick reply button.'),
   payload: z.string().describe('Text to send to the AI when the button is clicked.'),
 });
