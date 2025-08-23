@@ -48,7 +48,7 @@ export type GuideOrderingWithAIInput = z.infer<typeof GuideOrderingWithAIInputSc
 
 
 const ProductCardSchema = z.object({
-    type: z.literal('productCard'),
+    type: z.enum(['productCard']).describe('The component type.'),
     productId: z.string().describe('The unique ID of the product.'),
     imageUrl: z.string().describe('URL of the product image.'),
     name: z.string().describe('Name of the product.'),
@@ -57,17 +57,17 @@ const ProductCardSchema = z.object({
 });
   
 const QuickReplyButtonSchema = z.object({
-    type: z.literal('quickReplyButton'),
+    type: z.enum(['quickReplyButton']).describe('The component type.'),
     label: z.string().describe('Label of the quick reply button.'),
     payload: z.string().describe('Text to send to the AI when the button is clicked.'),
 });
 
 const OrderSummaryCardSchema = z.object({
-    type: z.literal('orderSummaryCard'),
+    type: z.enum(['orderSummaryCard']).describe('The component type.'),
 });
 
 const OrderControlButtonsSchema = z.object({
-    type: z.literal('orderControlButtons'),
+    type: z.enum(['orderControlButtons']).describe('The component type.'),
 });
   
 const GuideOrderingWithAIOutputSchema = z.object({
