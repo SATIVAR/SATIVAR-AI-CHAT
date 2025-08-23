@@ -21,6 +21,7 @@ export default async function CategoriesPage() {
     
     const categoryId = formData.get('id') as string | null;
     const imageUrl = formData.get('imageUrl') as string;
+    const nextStepSuggestion = formData.get('nextStepSuggestion') as string | null;
 
     try {
         const categoryData: Partial<ProductCategory> = {
@@ -28,13 +29,9 @@ export default async function CategoriesPage() {
             description: formData.get('description') as string,
             order: Number(formData.get('order')),
             imageUrl: imageUrl || 'https://placehold.co/600x400.png',
-            nextStepSuggestion: formData.get('nextStepSuggestion') as string || undefined,
+            nextStepSuggestion: nextStepSuggestion === 'none' ? '' : nextStepSuggestion || '',
         };
         
-        if (categoryData.nextStepSuggestion === 'none') {
-            categoryData.nextStepSuggestion = '';
-        }
-
         let result;
         if (categoryId) {
             result = await updateCategory(categoryId, categoryData);
