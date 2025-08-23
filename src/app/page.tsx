@@ -118,7 +118,7 @@ export default function Home() {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
   }
 
-  const handleSendMessage = useCallback(async (text: string, lastAction?: string) => {
+  const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading || !client) return;
 
     const userMessage: Message = {
@@ -132,6 +132,13 @@ export default function Home() {
     updateChatHistory(newMessages);
     setIsLoading(true);
 
+    // Handle cancel action from input
+    if (text.toLowerCase().includes('cancelar meu pedido')) {
+        handleCancelOrder(newMessages); // Pass history to keep the user message
+        setIsLoading(false);
+        return;
+    }
+    
     try {
       const res = await getAiResponse(newMessages, order, client);
       
@@ -146,16 +153,9 @@ export default function Home() {
       if (res.components?.some(c => c.type === 'orderSummaryCard')) {
          setIsAwaitingOrderDetails(true);
       }
-
-      // Handle cancel action
-      if (text.toLowerCase().includes('cancelar pedido')) {
-        handleCancelOrder();
-        // The AI message will be the confirmation, so we add it and stop.
-        updateChatHistory([...newMessages, aiMessage]);
-        return;
-      }
-
+      
       updateChatHistory([...newMessages, aiMessage]);
+
     } catch (error) {
       console.error("Failed to get AI response:", error);
       const errorMessage: Message = {
@@ -186,8 +186,6 @@ export default function Home() {
     }
     updateOrder(updatedOrder);
 
-    // No longer sends a message to the AI, just updates the state.
-
   }, [order, client]);
 
   const handleSubmitOrder = async (data: UserDetails) => {
@@ -197,31 +195,31 @@ export default function Home() {
     setClient(fullClientDetails);
     localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(fullClientDetails));
     
+    const submittedOrder = [...order]; // Capture the order state
+
     try {
-      const result = await submitOrder(fullClientDetails, order);
+      const result = await submitOrder(fullClientDetails, submittedOrder);
 
       if (!result.success) throw new Error("Order submission failed");
+
+      // Create a simple summary of the order
+      const orderSummaryText = submittedOrder.map(item => `${item.quantity}x ${item.productName}`).join(', ');
 
       const finalMessage: Message = {
         id: `final-${Date.now()}`,
         role: 'ai',
-        content: `Perfeito, ${data.name}! Seu pedido foi confirmado e já está sendo preparado. ✅\n\nQualquer novidade, avisaremos no número ${data.phone}. Obrigado por escolher o UTÓPICOS!`,
-        timestamp: new Date()
+        content: `Perfeito, ${data.name}! ✅ Seu pedido foi confirmado e já está sendo preparado.\n\n*Resumo:* ${orderSummaryText}\n\nQualquer novidade, avisaremos no número ${data.phone}. Obrigado por escolher o UTÓPICOS!`,
+        timestamp: new Date(),
+        components: [
+          { type: 'quickReplyButton', label: 'Fazer novo pedido', payload: 'Gostaria de ver o cardápio' }
+        ]
       };
       
-      const updatedChat = messages.filter(m => !m.components?.some(c => c.type === 'orderSummaryCard'));
-      updateChatHistory([...updatedChat, finalMessage]);
-      setOrder([]);
+      // Reset the chat with only the final confirmation message
+      updateChatHistory([finalMessage]);
+      updateOrder([]); // Clear order state
       localStorage.removeItem(ORDER_KEY);
       setIsAwaitingOrderDetails(false);
-
-      setTimeout(() => {
-        // Reset the chat history and fetch a new greeting
-        localStorage.removeItem(CHAT_HISTORY_KEY);
-        setMessages([]);
-        fetchGreeting(data.name);
-      }, 8000);
-
 
     } catch (error) {
       console.error('Failed to submit order', error);
@@ -247,11 +245,24 @@ export default function Home() {
     updateOrder(updatedOrder);
   };
 
-  const handleCancelOrder = () => {
+  const handleCancelOrder = (currentMessages: Message[] = messages) => {
     updateOrder([]);
+    localStorage.removeItem(ORDER_KEY);
     setIsAwaitingOrderDetails(false);
-    handleSendMessage('quero cancelar meu pedido');
-  }
+    
+    const cancelConfirmationMessage: Message = {
+        id: `ai-cancel-${Date.now()}`,
+        role: 'ai',
+        content: 'Seu pedido foi cancelado. Se mudar de ideia, é só chamar! 👋',
+        timestamp: new Date(),
+        components: [
+          { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
+        ]
+    };
+    
+    // Reset chat with the cancellation message
+    updateChatHistory([...currentMessages, cancelConfirmationMessage]);
+  };
 
   if (!client) {
     return <WelcomeScreen onLogin={handleLogin} isLoading={isLoading} />

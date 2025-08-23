@@ -107,7 +107,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
         onUpdateOrder={onUpdateOrder}
         onCancelOrder={() => {
             onCancelOrder();
-            onSendMessage('quero cancelar meu pedido');
             setIsCartOpen(false);
         }}
         onFinalizeOrder={() => {
