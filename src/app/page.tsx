@@ -250,6 +250,7 @@ export default function Home() {
   const handleCancelOrder = () => {
     updateOrder([]);
     setIsAwaitingOrderDetails(false);
+    handleSendMessage('quero cancelar meu pedido');
   }
 
   if (!client) {
@@ -271,3 +272,4 @@ export default function Home() {
     />
   );
 }
+
