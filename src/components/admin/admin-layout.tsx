@@ -42,8 +42,6 @@ const AdminNavLink = ({ href, children, label }: { href: string; children: React
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
-    const pathname = usePathname();
-    const isMenuActive = pathname.startsWith('/admin/categories') || pathname.startsWith('/admin/products');
 
     const handleLogout = () => {
         localStorage.removeItem('utopizap-admin-session');
@@ -67,28 +65,12 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                         <AdminNavLink href="/admin/clients" label="Clientes">
                             <Users className="h-5 w-5" />
                         </AdminNavLink>
-                        <Accordion type="single" collapsible defaultValue={isMenuActive ? "item-1" : ""} className="w-full">
-                          <AccordionItem value="item-1" className="border-b-0">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <AccordionTrigger className="w-10 h-10 p-0 flex justify-center hover:no-underline rounded-md data-[state=open]:bg-muted">
-                                        <ShoppingBasket className="h-5 w-5" />
-                                    </AccordionTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">
-                                    <p>Cardápio</p>
-                                </TooltipContent>
-                            </Tooltip>
-                            <AccordionContent className="pt-4 flex flex-col items-center gap-4">
-                              <AdminNavLink href="/admin/categories" label="Categorias">
-                                <Layers className="h-5 w-5" />
-                              </AdminNavLink>
-                               <AdminNavLink href="/admin/products" label="Produtos">
-                                <UtensilsCrossed className="h-5 w-5" />
-                              </AdminNavLink>
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
+                        <AdminNavLink href="/admin/categories" label="Categorias">
+                            <Layers className="h-5 w-5" />
+                        </AdminNavLink>
+                        <AdminNavLink href="/admin/products" label="Produtos">
+                            <UtensilsCrossed className="h-5 w-5" />
+                        </AdminNavLink>
                     </nav>
                     <div className="mt-auto p-4 flex flex-col items-center gap-4">
                          <Tooltip>
