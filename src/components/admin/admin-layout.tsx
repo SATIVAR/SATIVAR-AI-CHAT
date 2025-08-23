@@ -4,7 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, LogOut } from 'lucide-react';
+import { Home, Users, LogOut, ShoppingBasket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Logo } from '../icons/logo';
@@ -49,6 +49,10 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                     <AdminNavLink href="/admin/clients">
                         <Users className="mr-2 h-4 w-4" />
                         Clientes
+                    </AdminNavLink>
+                    <AdminNavLink href="/admin/categories">
+                        <ShoppingBasket className="mr-2 h-4 w-4" />
+                        Cardápio
                     </AdminNavLink>
                 </nav>
                 <div className="mt-auto p-4">
