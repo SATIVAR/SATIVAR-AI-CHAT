@@ -11,13 +11,29 @@ import { unstable_cache } from 'next/cache';
 import { Timestamp } from 'firebase-admin/firestore';
 
 
+function serializeClient(client: Client): Client {
+    const serializeTimestamp = (timestamp: any) => {
+        if (timestamp instanceof Timestamp) {
+            return timestamp.toDate();
+        }
+        return timestamp;
+    };
+
+    return {
+        ...client,
+        createdAt: serializeTimestamp(client.createdAt),
+        lastOrderAt: serializeTimestamp(client.lastOrderAt),
+    };
+}
+
+
 export async function findOrCreateClient(data: UserDetails): Promise<Client> {
     console.log(`Buscando ou criando cliente com telefone: ${data.phone}`);
     const existingClient = await findClientByPhone(data.phone);
 
     if (existingClient) {
         console.log("Cliente encontrado:", existingClient.id);
-        return existingClient;
+        return serializeClient(existingClient);
     }
 
     console.log("Cliente não encontrado, criando novo...");
@@ -28,7 +44,9 @@ export async function findOrCreateClient(data: UserDetails): Promise<Client> {
     };
     const newClientId = await createClient(newClientData);
     console.log("Novo cliente criado com ID:", newClientId);
-    return { ...newClientData, id: newClientId };
+
+    const clientWithId = { ...newClientData, id: newClientId };
+    return serializeClient(clientWithId);
 }
 
 

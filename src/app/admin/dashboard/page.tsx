@@ -8,6 +8,9 @@ import { Separator } from '@/components/ui/separator';
 function OrderCard({ order }: { order: Order }) {
     const totalItems = order.items.reduce((acc, item) => acc + item.quantity, 0);
 
+    // Ensure createdAt is a Date object before formatting
+    const createdAtDate = order.createdAt instanceof Date ? order.createdAt : new Date();
+
     return (
         <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="p-4">
@@ -16,7 +19,7 @@ function OrderCard({ order }: { order: Order }) {
                     <Badge variant={order.status === 'Recebido' ? 'default' : 'secondary'}>{order.status}</Badge>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground pt-1">
-                    {new Date(order.createdAt as any).toLocaleString('pt-BR')}
+                    {createdAtDate.toLocaleString('pt-BR')}
                 </p>
             </CardHeader>
             <CardContent className="p-4 pt-0">

@@ -36,6 +36,7 @@ export async function getOrders(): Promise<Order[]> {
         return { 
             id: doc.id, 
             ...data,
+            // Convert Timestamps to serializable Date objects
             createdAt: (data.createdAt as Timestamp).toDate(),
             updatedAt: (data.updatedAt as Timestamp).toDate(),
         } as Order
