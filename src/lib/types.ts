@@ -56,7 +56,7 @@ export interface Message {
   role: 'user' | 'ai';
   content: string;
   timestamp: Date;
-  components?: DynamicComponentData[];
+  components?: DynamicComponent-Data[];
   isConfirmation?: boolean;
 }
 
@@ -68,6 +68,15 @@ export interface Menu {
 export interface UserDetails {
   name: string;
   phone: string;
+  address?: {
+      street?: string;
+      number?: string;
+      neighborhood?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+      reference?: string;
+  };
 }
 
 export interface Order {

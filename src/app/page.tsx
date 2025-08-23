@@ -204,7 +204,7 @@ export default function Home() {
     localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(fullClientDetails));
     
     try {
-      const result = await submitOrder(data, order);
+      const result = await submitOrder(fullClientDetails, order);
 
       if (!result.success) throw new Error("Order submission failed");
 

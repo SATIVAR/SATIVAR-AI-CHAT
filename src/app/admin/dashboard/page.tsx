@@ -9,7 +9,7 @@ function OrderCard({ order }: { order: Order }) {
     const totalItems = order.items.reduce((acc, item) => acc + item.quantity, 0);
 
     // Ensure createdAt is a Date object before formatting
-    const createdAtDate = order.createdAt instanceof Date ? order.createdAt : new Date();
+    const createdAtDate = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt as any);
 
     return (
         <Card className="shadow-md hover:shadow-lg transition-shadow">

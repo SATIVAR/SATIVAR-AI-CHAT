@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 // Helper function to convert Firestore timestamp to a serializable Date object
 const toSerializableDate = (timestamp: any): Date => {
+    if (!timestamp) return new Date();
     if (timestamp instanceof Timestamp) {
         return timestamp.toDate();
     }
