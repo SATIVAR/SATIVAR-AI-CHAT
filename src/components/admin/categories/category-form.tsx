@@ -12,14 +12,13 @@ import { ProductCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import Image from 'next/image';
 
 const formSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
     description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
     order: z.coerce.number().min(0, 'A ordem deve ser um número positivo.'),
-    imageUrl: z.string().url().optional().or(z.literal('')),
+    imageUrl: z.string().url({ message: "Por favor, insira uma URL válida." }).or(z.literal('')),
 });
 
 type CategoryFormValues = z.infer<typeof formSchema>;
@@ -124,6 +123,17 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
                                 <FormItem>
                                     <FormLabel>Ordem de Exibição *</FormLabel>
                                     <FormControl><Input type="number" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="imageUrl"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>URL da Imagem</FormLabel>
+                                    <FormControl><Input placeholder="https://exemplo.com/imagem.png" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}

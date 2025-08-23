@@ -19,22 +19,18 @@ export default async function CategoriesPage() {
     'use server';
     
     const categoryId = formData.get('id') as string | null;
+    const imageUrl = formData.get('imageUrl') as string;
 
     try {
         const categoryData: Partial<ProductCategory> = {
             name: formData.get('name') as string,
             description: formData.get('description') as string,
             order: Number(formData.get('order')),
-            imageUrl: 'https://placehold.co/600x400.png', // Using placeholder
+            imageUrl: imageUrl || 'https://placehold.co/600x400.png',
         };
 
         let result;
         if (categoryId) {
-            // Ensure we don't overwrite the existing image URL if not changed
-            const existingCategory = categories.find(c => c.id === categoryId);
-            if (existingCategory && !formData.has('imageFile')) {
-                categoryData.imageUrl = existingCategory.imageUrl;
-            }
             result = await updateCategory(categoryId, categoryData);
         } else {
             result = await createCategory(categoryData);
@@ -55,7 +51,6 @@ export default async function CategoriesPage() {
     'use server';
 
     try {
-        // Since we are not using storage, we don't need to delete the image
         const result = await deleteCategory(id);
         if (result.success) {
             revalidatePath('/admin/categories');
