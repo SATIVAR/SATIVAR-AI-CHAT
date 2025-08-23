@@ -24,7 +24,6 @@ function initializeAdminApp() {
   try {
     return admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: `https://s${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseio.com`,
     });
   } catch (error: any) {
     console.error('Firebase admin initialization error', error.stack);
