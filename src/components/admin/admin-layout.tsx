@@ -4,20 +4,26 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, LogOut, ShoppingBasket } from 'lucide-react';
+import { Home, Users, LogOut, ShoppingBasket, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Logo } from '../icons/logo';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '../theme-toggle';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 
 const AdminNavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
     const pathname = usePathname();
-    const isActive = pathname.startsWith(href);
+    const isActive = pathname === href;
     return (
         <Link href={href} passHref>
-            <Button variant={isActive ? "secondary" : "ghost"} className="w-full justify-start">
+            <Button variant={isActive ? "secondary" : "ghost"} className="w-full justify-start pl-8">
                 {children}
             </Button>
         </Link>
@@ -26,6 +32,8 @@ const AdminNavLink = ({ href, children }: { href: string; children: React.ReactN
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
+    const pathname = usePathname();
+    const isMenuActive = pathname.startsWith('/admin/categories') || pathname.startsWith('/admin/products');
 
     const handleLogout = () => {
         localStorage.removeItem('utopizap-admin-session');
@@ -41,19 +49,37 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                         <span>UtópiZap Admin</span>
                     </Link>
                 </div>
-                <nav className="flex flex-col gap-2 p-4">
-                    <AdminNavLink href="/admin/dashboard">
-                        <Home className="mr-2 h-4 w-4" />
-                        Painel de Pedidos
-                    </AdminNavLink>
-                    <AdminNavLink href="/admin/clients">
-                        <Users className="mr-2 h-4 w-4" />
-                        Clientes
-                    </AdminNavLink>
-                    <AdminNavLink href="/admin/categories">
-                        <ShoppingBasket className="mr-2 h-4 w-4" />
-                        Cardápio
-                    </AdminNavLink>
+                <nav className="flex flex-col gap-1 p-4">
+                    <Link href="/admin/dashboard" passHref>
+                        <Button variant={pathname.startsWith('/admin/dashboard') ? "secondary" : "ghost"} className="w-full justify-start">
+                             <Home className="mr-2 h-4 w-4" />
+                            Painel de Pedidos
+                        </Button>
+                    </Link>
+                    <Link href="/admin/clients" passHref>
+                        <Button variant={pathname.startsWith('/admin/clients') ? "secondary" : "ghost"} className="w-full justify-start">
+                            <Users className="mr-2 h-4 w-4" />
+                            Clientes
+                        </Button>
+                    </Link>
+                     <Accordion type="single" collapsible defaultValue={isMenuActive ? "item-1" : ""}>
+                      <AccordionItem value="item-1" className="border-b-0">
+                        <AccordionTrigger className="py-2 px-4 text-sm font-medium rounded-md hover:bg-muted hover:no-underline data-[state=open]:bg-muted">
+                           <div className="flex items-center">
+                             <ShoppingBasket className="mr-2 h-4 w-4" />
+                             Cardápio
+                           </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-1">
+                          <AdminNavLink href="/admin/categories">
+                            Categorias
+                          </AdminNavLink>
+                           <AdminNavLink href="/admin/products">
+                            Produtos
+                          </AdminNavLink>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                 </nav>
                 <div className="mt-auto p-4">
                     <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
