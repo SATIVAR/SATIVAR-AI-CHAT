@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Utensils, Check, ChefHat } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 const statusConfig = {
   Recebido: {
@@ -212,14 +213,14 @@ export default function DashboardPage() {
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                                      <span className={cn("w-3 h-3 rounded-full", statusConfig[status].color)}></span>
                                     {statusConfig[status].title}
-                                    <span className="text-base font-normal text-muted-foreground">({ordersByStatus[status].length})</span>
+                                    <span className="text-base font-normal text-muted-foreground">({(ordersByStatus[status] || []).length})</span>
                                 </h2>
                                 <AnimatePresence>
                                 <div className="space-y-4">
-                                    {ordersByStatus[status].map(order => (
+                                    {(ordersByStatus[status] || []).map(order => (
                                         <OrderCard key={order.id} order={order} onStatusChange={handleStatusChange} />
                                     ))}
-                                    {ordersByStatus[status].length === 0 && (
+                                    {(ordersByStatus[status] || []).length === 0 && (
                                         <div className="text-sm text-muted-foreground text-center py-8 px-4 rounded-lg border-2 border-dashed">
                                             Nenhum pedido aqui.
                                         </div>
