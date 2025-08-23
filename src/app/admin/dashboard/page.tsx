@@ -183,7 +183,10 @@ export default function DashboardPage() {
             <header className="bg-background dark:bg-card shadow-sm p-4 sticky top-0 z-20 flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Painel de Pedidos - KDS</h1>
                 <div className="flex items-center space-x-2">
-                    <Label htmlFor="store-status-switch" className={isStoreOpen ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                    <Label htmlFor="store-status-switch" className={cn(
+                        "font-semibold transition-colors",
+                        isStoreOpen ? "text-green-600" : "text-red-600"
+                        )}>
                         {isSwitching ? "Alterando..." : isStoreOpen ? 'Loja Aberta' : 'Loja Fechada'}
                     </Label>
                     <Switch
