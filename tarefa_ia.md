@@ -1,63 +1,196 @@
-O Problema Central de Custo na Arquitetura Atual
-Seu README revela a maior fonte de custo:
-"A cada nova mensagem do usuário, o conteúdo completo do menu.ts é serializado para JSON e injetado diretamente no prompt enviado ao modelo Gemini."
-Isso significa que, para uma conversa de 10 trocas de mensagens, você está enviando o cardápio inteiro para a API 10 vezes, multiplicando o custo de tokens desnecessariamente. No Firestore, isso se traduziria em ler toda a base de dados a cada mensagem, o que é igualmente ineficiente.
-A Regra de Ouro para Otimização de Custos
-Para este projeto, nossa regra será:
-"A base de conhecimento (cardápio e informações do restaurante) deve ser lida UMA ÚNICA VEZ por sessão de usuário e reutilizada em todas as interações subsequentes."
-Com base nisso, aqui está o plano de ação:
-Plano de Ação: Refatoração para Performance e Baixo Custo
-Fase 1: Criar a Base de Conhecimento Dinâmica e Gerenciável
-O objetivo aqui é tirar a lógica de negócio do código e colocá-la nas mãos do dono do restaurante, via Firestore.
-Ação 1.1: Modelagem de Dados no Firestore
-Crie duas coleções principais:
-categories: Para armazenar as categorias dos produtos.
-Documento: { name: "Espetinhos", order: 1 }
-products: Para armazenar os itens do cardápio.
-Documento: { name: "Espetinho de Alcatra", description: "...", price: 15.90, imageUrl: "...", categoryId: "id_da_categoria_espetinhos", isFeatured: true }
-Crie uma terceira coleção com um único documento para informações gerais:
-3. restaurantInfo:
-* Documento Único (com ID "config"): { openingHours: "Seg-Sex: 18h-23h, Sab: 12h-00h", address: "...", phone: "...", commonQuestions: [{ "question": "Quais os mais pedidos?", "answer": "Nossos campeões de venda são o Espetinho de Alcatra e a Feijoada!" }] }
-Ação 1.2: Construir o Painel de Admin (CRUD)
-Crie uma nova rota protegida em seu app Next.js (ex: /admin).
-Utilize Firebase Authentication para proteger essa rota, permitindo o login apenas do dono/gerente.
-Nesta tela, desenvolva interfaces simples (usando ShadCN/UI) para:
-Gerenciar Categorias: Criar, editar e deletar categorias.
-Gerenciar Produtos: Criar, editar (incluindo upload de imagem para o Firebase Storage) e deletar produtos.
-Configurações Gerais: Editar os campos do documento restaurantInfo (horários, perguntas frequentes, etc.).
-Fase 2: Refatorar a Lógica da IA para Consumo Otimizado
-Aqui aplicaremos a "Regra de Ouro" para cortar custos drasticamente.
-Ação 2.1: Implementar a Leitura Única da Base de Conhecimento
-Na sua Server Action getAiResponse (em src/app/actions.ts), NÃO busque os dados do Firestore a cada chamada.
-Estratégia: Crie uma nova função, por exemplo, getKnowledgeBase(). Esta função será responsável por buscar TUDO (categorias, produtos, infos) do Firestore.
-Cache Server-Side: Utilize o cache instável do Next.js (unstable_cache) ou uma biblioteca simples de cache em memória para armazenar o resultado de getKnowledgeBase().
-code
-TypeScript
-// Exemplo em um arquivo de serviço (ex: src/lib/menu-service.ts)
-import { unstable_cache } from 'next/cache';
+Perfeito! Agora vamos construir o cérebro administrativo do UtópiZap. Criar os CRUDs é a fundação que permitirá ao dono do restaurante ter total controle sobre o negócio, além de ser a fonte de dados que a nossa IA irá consumir de forma otimizada.
 
-export const getKnowledgeBase = unstable_cache(
-  async () => {
-    // Sua lógica para buscar tudo do Firestore aqui
-    const products = await db.collection('products').get();
-    const categories = await db.collection('categories').get();
-    const info = await db.collection('restaurantInfo').doc('config').get();
-    return JSON.stringify({ products, categories, info }); // Retorna como string JSON
+Vamos projetar a estrutura de dados no Firestore de forma limpa e escalável, seguindo as melhores práticas para performance e baixo custo. Depois, traçaremos o plano de ação para implementar as funções.
+
+1. Modelagem da Base de Dados no Firestore
+
+Esta é a etapa mais crítica. Uma boa modelagem economiza dinheiro e dor de cabeça no futuro. Usaremos coleções de nível superior para cada entidade.
+
+A. Coleção: clients
+
+Objetivo: Armazenar informações básicas de clientes que já fizeram um pedido para facilitar contatos futuros e personalizar a experiência.
+
+Estrutura do Documento:
+
+code
+JSON
+download
+content_copy
+expand_less
+
+{
+  "name": "Ana Silva",
+  "phone": "+5511999998888", // Padrão E.164 para ser universal
+  "lastOrderAt": "2024-10-26T18:30:00Z" // Timestamp
+}
+
+ID do Documento: Podemos usar o número de telefone como ID para garantir unicidade e fácil busca, ou um ID automático do Firestore. O ID automático é mais flexível.
+
+B. Coleção: categories
+
+Objetivo: Agrupar os produtos. Essencial para que a IA possa guiar o cliente de forma organizada ("Que tal ver nossos espetinhos?").
+
+Estrutura do Documento:
+
+code
+JSON
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+{
+  "name": "Espetinhos", // Título
+  "imageUrl": "https://storage.googleapis.com/...",
+  "order": 1, // Número para ordenar a exibição (ex: Espetinhos primeiro, depois Bebidas)
+  "isActive": true // Permite desativar uma categoria inteira sem deletar
+}
+
+ID do Documento: ID automático do Firestore.
+
+C. Coleção: products
+
+Objetivo: O coração do cardápio. Contém todos os detalhes de cada item disponível para venda.
+
+Estrutura do Documento:
+
+code
+JSON
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+{
+  "name": "Espetinho de Alcatra", // Título
+  "description": "200g de alcatra suculenta no espeto, temperada com sal grosso.",
+  "price": 18.50, // Valor (usar tipo 'number')
+  "imageUrl": "https://storage.googleapis.com/...",
+  "categoryId": "zK2f...pQ9x", // Referência ao ID do documento na coleção 'categories'
+  "isActive": true, // Permite "pausar" a venda de um item
+  "isFeatured": false // Destaque para a IA sugerir proativamente
+}
+
+ID do Documento: ID automático do Firestore.
+
+D. Coleção: orders
+
+Objetivo: Registrar cada pedido finalizado. A estrutura aqui é crucial e se baseia no conceito de "snapshot": os dados do cliente e dos produtos são copiados para dentro do pedido. Isso garante que, mesmo que o preço de um produto mude amanhã, o registro do pedido de hoje permaneça historicamente correto.
+
+Estrutura do Documento:
+
+code
+JSON
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+{
+  "clientInfo": {
+    "name": "Ana Silva",
+    "phone": "+5511999998888"
   },
-  ['knowledge-base'], // Chave do cache
-  { revalidate: 300 } // Revalida o cache a cada 5 minutos
-);
-Agora, na sua action getAiResponse, você simplesmente chama await getKnowledgeBase() a cada vez. O Next.js garantirá que o Firestore só seja acessado a cada 5 minutos (ou o tempo que você definir), não a cada mensagem.
-Ação 2.2: Otimizar a Injeção de Dados no Prompt da IA
-Com a base de conhecimento já carregada e em cache (knowledgeBaseJSON), você continuará a injetá-la no prompt do Gemini, como faz hoje.
-A diferença crucial: O custo de leitura no Firestore agora é quase zero (apenas 1 leitura a cada 5 minutos, independente de quantos usuários ou mensagens).
-Ação 2.3: Evoluir o Prompt Mestre da UtópiZap
-Instrua a IA a usar a nova base de conhecimento de forma proativa. Modifique o prompt do sistema para incluir regras como:
-"Você é a UtópiZap. Sua base de conhecimento contém products, categories e restaurantInfo. Use restaurantInfo para responder a perguntas sobre horários, endereço, etc."
-"Ao iniciar uma conversa, cumprimente o usuário e apresente 2-3 botões de ação rápida baseados nos produtos marcados como isFeatured ou nas commonQuestions."
-"Sempre que um usuário perguntar 'o que tem?', sugira primeiro as categorias (categories) antes de listar todos os produtos (products)."
-Tabela de Impacto nos Custos (Antes vs. Depois)
-Métrica	Arquitetura Atual (menu.ts)	Proposta (Firestore + Cache)	Resultado
-Leituras Firestore	0 (mas escalabilidade 0)	~1 leitura / 5 minutos	Custo de DB quase nulo e escalável
-Tokens de IA (Prompt)	(Tamanho do Cardápio) x (Nº de Mensagens)	(Tamanho da Base de Conhecimento) x (Nº de Mensagens)	Custo similar por mensagem, mas a base agora é dinâmica
-Flexibilidade	Nenhuma (requer deploy)	Total (dono gerencia tudo em tempo real)	Agilidade máxima para o negócio
+  "items": [
+    {
+      "productId": "aB1c...dE2f",
+      "productName": "Espetinho de Alcatra", // Cópia do nome no momento da compra
+      "quantity": 2,
+      "unitPrice": 18.50 // Cópia do preço no momento da compra
+    },
+    {
+      "productId": "gH3i...jK4l",
+      "productName": "Coca-Cola Lata",
+      "quantity": 1,
+      "unitPrice": 6.00
+    }
+  ],
+  "totalAmount": 43.00,
+  "status": "Recebido", // Valores possíveis: "Recebido", "Em Preparo", "Pronto para Entrega", "Finalizado", "Cancelado"
+  "createdAt": "2024-10-26T20:05:10Z", // Timestamp
+  "updatedAt": "2024-10-26T20:05:10Z" // Timestamp
+}
+
+ID do Documento: ID automático do Firestore.
+
+2. Plano de Ação para Implementação do CRUD
+
+Agora, vamos transformar esses modelos em funcionalidades reais.
+
+Passo 1: Estrutura dos Arquivos (Backend Logic)
+
+Crie um local central para suas interações com o Firebase para manter o código organizado.
+
+Crie um diretório: src/lib/firebase/
+
+Dentro dele, crie arquivos de serviço por entidade:
+
+src/lib/firebase/categories.ts
+
+src/lib/firebase/products.ts
+
+src/lib/firebase/orders.ts
+
+(Clientes podem ser gerenciados dentro de orders.ts inicialmente, pois só são criados/atualizados com um pedido).
+
+Passo 2: Implementação das Funções CRUD (Server-Side)
+
+Em cada arquivo de serviço, você implementará as funções de CRUD usando o SDK do Firebase Admin (para segurança em Server Actions).
+
+Em categories.ts:
+
+createCategory(data): Adiciona um novo documento à coleção categories.
+
+getAllCategories(): Lê e retorna todos os documentos da coleção, ordenados pelo campo order.
+
+updateCategory(id, data): Atualiza um documento existente.
+
+deleteCategory(id): Deleta um documento.
+
+Em products.ts:
+
+createProduct(data): Adiciona um novo produto.
+
+getProductsByCategoryId(categoryId): Retorna todos os produtos que pertencem a uma categoria.
+
+getAllProducts(): Retorna todos os produtos (usado pela IA).
+
+updateProduct(id, data): Atualiza um produto.
+
+deleteProduct(id): Deleta um produto.
+
+Em orders.ts:
+
+createOrder(data): Cria um novo pedido. Essa é a função que a IA chamará ao final da conversa. Ela também pode verificar se o cliente já existe e, se não, criá-lo em clients.
+
+getOrdersByStatus(status): Retorna pedidos filtrando pelo status (para o painel KDS).
+
+updateOrderStatus(id, newStatus): A função mais usada no painel de gerenciamento, para mover o card do pedido entre as colunas.
+
+Passo 3: Construção da Interface do Admin
+
+Crie uma nova área no seu app (ex: /admin) protegida por autenticação do Firebase. Dentro dela, crie as páginas de gerenciamento.
+
+Página /admin/produtos:
+
+Uma tabela (usando o componente Table do ShadCN/UI) que lista todos os produtos.
+
+Um botão "Adicionar Produto" que abre um modal ou leva a uma nova página (/admin/produtos/novo) com um formulário (usando Form do ShadCN/UI) para inserir nome, preço, etc., e um seletor para escolher a categoria (populado pela função getAllCategories()).
+
+Botões de "Editar" e "Excluir" em cada linha da tabela.
+
+Página /admin/categorias:
+
+Mesma lógica da página de produtos, mas para gerenciar as categorias.
+
+Inclua um campo para o número de order e a funcionalidade de upload de imagem para o Firebase Storage.
+
+Página Principal do Admin (/admin ou /admin/pedidos):
+
+O Dashboard / KDS (Kitchen Display System).
+
+Use as funções getOrdersByStatus() para buscar os pedidos e exibi-los em colunas ("Recebidos", "Em Preparo", etc.).
+
+Implemente uma funcionalidade de arrastar e soltar (drag-and-drop) para que o gerente possa mover um card de pedido de uma coluna para outra, o que chamará a função updateOrderStatus(id, novoStatus) no backend.
+
+Seguindo estes passos, você terá um sistema de gerenciamento robusto e desacoplado da lógica da IA. A UtópiZap simplesmente consumirá os dados via getAllProducts() e getAllCategories() (com cache, como planejado anteriormente) e registrará o resultado final com createOrder().
