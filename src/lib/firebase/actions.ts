@@ -5,16 +5,24 @@ import { storage } from './admin';
 const BUCKET_NAME = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
 // Pro-tip: Set CORS on your bucket to allow uploads from your app's domain.
-// gsutil cors set cors.json gs://<your-bucket-name>
+// This is necessary to fix "unexpected response from server" errors during direct browser uploads.
+// 1. Create a file named cors.json with the content below.
+// 2. Replace the origins with your actual app domains (dev and prod).
+// 3. Run the gcloud command to apply the settings to your bucket.
+//
 // cors.json content:
 // [
 //   {
-//     "origin": ["http://localhost:3000", "https://your-app-domain.com"],
-//     "method": ["GET", "PUT", "POST", "DELETE"],
+//     "origin": ["http://localhost:9002", "https://your-production-app-url.com"],
+//     "method": ["PUT"],
 //     "responseHeader": ["Content-Type", "Content-Length"],
 //     "maxAgeSeconds": 3600
 //   }
 // ]
+//
+// Command to run:
+// gcloud storage buckets update gs://<your-bucket-name> --cors-file=cors.json
+
 
 export async function getSignedUrl(fileType: string, size: number, folder: string) {
     if (!BUCKET_NAME) {
