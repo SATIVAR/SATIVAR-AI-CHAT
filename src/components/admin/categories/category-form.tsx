@@ -19,6 +19,7 @@ const formSchema = z.object({
     name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
     description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
     order: z.coerce.number().min(0, 'A ordem deve ser um número positivo.'),
+    imageUrl: z.string().url().optional().or(z.literal('')),
 });
 
 type CategoryFormValues = z.infer<typeof formSchema>;
@@ -40,6 +41,7 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
             name: '',
             description: '',
             order: 0,
+            imageUrl: '',
             ...category,
         },
     });
@@ -50,6 +52,7 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
                 name: '',
                 description: '',
                 order: 0,
+                imageUrl: '',
                 ...category
             });
         }
@@ -119,8 +122,8 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
 
                          <div className="space-y-2">
                             <FormLabel>Imagem da Categoria</FormLabel>
-                            <Input type="file" disabled className="text-sm file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5" />
-                            <p className="text-xs text-muted-foreground">Em breve: funcionalidade de upload de imagem.</p>
+                            <Input type="file" className="text-sm file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5" />
+                            <p className="text-xs text-muted-foreground">Selecione uma imagem para a categoria.</p>
                         </div>
                         
                         <SheetFooter className="pt-6">

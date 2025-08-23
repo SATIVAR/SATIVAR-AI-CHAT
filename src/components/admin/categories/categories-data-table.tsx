@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
     ColumnDef,
     flexRender,
@@ -13,7 +14,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ImageIcon } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ProductCategory } from '@/lib/types';
@@ -36,6 +37,22 @@ export function CategoriesDataTable<TData extends ProductCategory, TValue>({
     const [selectedCategory, setSelectedCategory] = useState<Partial<TData> | null>(null);
 
     const columns: ColumnDef<TData>[] = [
+        {
+            accessorKey: 'imageUrl',
+            header: 'Imagem',
+            cell: ({ row }) => {
+                const imageUrl = row.original.imageUrl;
+                return (
+                    <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                        {imageUrl ? (
+                            <Image src={imageUrl} alt={row.original.name} width={48} height={48} className="object-cover w-full h-full" />
+                        ) : (
+                            <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                        )}
+                    </div>
+                )
+            }
+        },
         {
             accessorKey: 'name',
             header: 'Nome',
