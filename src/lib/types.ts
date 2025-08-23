@@ -56,13 +56,13 @@ export interface Message {
   role: 'user' | 'ai';
   content: string;
   timestamp: Date;
-  components?: DynamicComponent-Data[];
+  components?: DynamicComponentData[];
   isConfirmation?: boolean;
 }
 
 export interface Menu {
   categories: ProductCategory[];
-  items: Product[];
+  items: (Product & { category: string })[];
 }
 
 export interface UserDetails {

@@ -6,7 +6,7 @@ import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide
 import { findClientByPhone, createClient as createClientInDb } from '@/lib/firebase/clients';
 import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
 import { createOrder } from '@/lib/firebase/orders';
-import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client } from '@/lib/types';
+import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -73,11 +73,21 @@ export async function getInitialGreeting(clientName?: string): Promise<string> {
 
 // "Rule of Gold": Cache the knowledge base to be read only once per session/defined interval.
 export const getKnowledgeBase = unstable_cache(
-    async () => {
+    async (): Promise<Menu> => {
         console.log("Fetching knowledge base (from Firestore)...");
         const categories = await getAllCategories();
-        const items = await getAllProducts();
-        return { categories, items };
+        const products = await getAllProducts();
+
+        // Create a map for quick category lookup
+        const categoryMap = new Map(categories.map(cat => [cat.id, cat.name]));
+
+        // Enrich products with the category name
+        const enrichedItems = products.map(product => ({
+            ...product,
+            category: categoryMap.get(product.categoryId) || 'Sem categoria' // Get category name
+        }));
+
+        return { categories, items: enrichedItems };
     },
     ['knowledge-base'], // Cache key
     { revalidate: 300 } // Revalidate every 5 minutes
