@@ -8,6 +8,8 @@ export interface ProductCategory {
   order: number;
   isActive: boolean;
   imageUrl?: string;
+  createdAt?: Date | Timestamp;
+  updatedAt?: Date | Timestamp;
 }
 
 export interface Product {

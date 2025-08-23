@@ -1,6 +1,16 @@
 
 import { db } from './admin';
 import { ProductCategory } from '../types';
+import { Timestamp } from 'firebase-admin/firestore';
+
+
+const toSerializableDate = (timestamp: any): Date | null => {
+    if (!timestamp) return null;
+    if (timestamp instanceof Timestamp) {
+        return timestamp.toDate();
+    }
+    return new Date(timestamp);
+};
 
 
 export async function getAllCategories(): Promise<ProductCategory[]> {
@@ -8,7 +18,15 @@ export async function getAllCategories(): Promise<ProductCategory[]> {
   if (snapshot.empty) {
     return [];
   }
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductCategory));
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return { 
+      id: doc.id, 
+      ...data,
+      createdAt: toSerializableDate(data.createdAt),
+      updatedAt: toSerializableDate(data.updatedAt),
+    } as ProductCategory
+  });
 }
 
 
@@ -20,7 +38,8 @@ export async function createCategory(data: Partial<ProductCategory>): Promise<{s
     await db.collection('categories').add({
       ...data,
       isActive: true,
-      createdAt: new Date(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     });
     return { success: true };
   } catch (error) {
@@ -33,7 +52,7 @@ export async function updateCategory(id: string, data: Partial<ProductCategory>)
   try {
     await db.collection('categories').doc(id).update({
       ...data,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     });
     return { success: true };
   } catch (error) {

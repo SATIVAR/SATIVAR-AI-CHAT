@@ -7,7 +7,14 @@ import { revalidatePath } from 'next/cache';
 
 export default async function CategoriesPage() {
   
-  const categories = await getAllCategories();
+  const categoriesData = await getAllCategories();
+  
+  // Garante que os dados sejam serializáveis
+  const categories = categoriesData.map(cat => ({
+    ...cat,
+    createdAt: cat.createdAt ? new Date(cat.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: cat.updatedAt ? new Date(cat.updatedAt).toISOString() : undefined,
+  })) as unknown as ProductCategory[]
 
   const handleSaveCategory = async (data: Partial<ProductCategory>) => {
     'use server';
