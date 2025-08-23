@@ -22,12 +22,14 @@ import CategoryForm from './category-form';
 
 interface DataTableProps<TData extends ProductCategory, TValue> {
     data: TData[];
+    allCategories: TData[];
     onSave: (data: FormData) => Promise<{ success: boolean, error?: string }>;
     onDelete: (id: string, imageUrl?: string) => Promise<{ success: boolean, error?: string }>;
 }
 
 export function CategoriesDataTable<TData extends ProductCategory, TValue>({
     data,
+    allCategories,
     onSave,
     onDelete
 }: DataTableProps<TData, TValue>) {
@@ -174,6 +176,7 @@ export function CategoriesDataTable<TData extends ProductCategory, TValue>({
                 isOpen={isFormOpen} 
                 setIsOpen={setIsFormOpen}
                 category={selectedCategory}
+                allCategories={allCategories}
                 onSave={onSave}
             />
         </div>

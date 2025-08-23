@@ -8,6 +8,7 @@ export interface ProductCategory {
   order: number;
   isActive: boolean;
   imageUrl?: string;
+  nextStepSuggestion?: string;
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
 }

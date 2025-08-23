@@ -11,6 +11,7 @@ export default async function CategoriesPage() {
   
   const categories = categoriesData.map(cat => ({
     ...cat,
+    id: cat.id,
     createdAt: cat.createdAt ? new Date(cat.createdAt).toISOString() : new Date().toISOString(),
     updatedAt: cat.updatedAt ? new Date(cat.updatedAt).toISOString() : undefined,
   })) as unknown as ProductCategory[]
@@ -27,6 +28,7 @@ export default async function CategoriesPage() {
             description: formData.get('description') as string,
             order: Number(formData.get('order')),
             imageUrl: imageUrl || 'https://placehold.co/600x400.png',
+            nextStepSuggestion: formData.get('nextStepSuggestion') as string || undefined,
         };
 
         let result;
@@ -73,6 +75,7 @@ export default async function CategoriesPage() {
         <CardContent>
           <CategoriesDataTable 
             data={categories}
+            allCategories={categories}
             onSave={handleSaveCategory}
             onDelete={handleDeleteCategory}
           />

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -6,12 +7,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ProductCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
     id: z.string().optional(),
@@ -19,6 +21,7 @@ const formSchema = z.object({
     description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
     order: z.coerce.number().min(0, 'A ordem deve ser um número positivo.'),
     imageUrl: z.string().url({ message: "Por favor, insira uma URL válida." }).or(z.literal('')),
+    nextStepSuggestion: z.string().optional(),
 });
 
 type CategoryFormValues = z.infer<typeof formSchema>;
@@ -27,10 +30,11 @@ interface CategoryFormProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     category?: Partial<ProductCategory> | null;
+    allCategories: ProductCategory[];
     onSave: (data: FormData) => Promise<{ success: boolean, error?: string }>;
 }
 
-export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: CategoryFormProps) {
+export default function CategoryForm({ isOpen, setIsOpen, category, allCategories, onSave }: CategoryFormProps) {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     
@@ -41,6 +45,7 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
             description: '',
             order: 0,
             imageUrl: '',
+            nextStepSuggestion: '',
             ...category,
         },
     });
@@ -52,6 +57,7 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
                 description: '',
                 order: 0,
                 imageUrl: '',
+                nextStepSuggestion: '',
                 ...category
             });
         }
@@ -134,6 +140,32 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
                                 <FormItem>
                                     <FormLabel>URL da Imagem</FormLabel>
                                     <FormControl><Input placeholder="https://exemplo.com/imagem.png" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="nextStepSuggestion"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Sugestão de Próximo Passo</FormLabel>
+                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione a próxima categoria a sugerir" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="">Nenhuma</SelectItem>
+                                            {allCategories.filter(c => c.id !== category?.id).map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id!}>{cat.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                        Quando o cliente terminar de adicionar itens desta categoria, qual será a próxima sugestão?
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

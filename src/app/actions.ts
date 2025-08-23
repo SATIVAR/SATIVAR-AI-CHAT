@@ -65,7 +65,7 @@ export async function findOrCreateClient(data: UserDetails): Promise<Client> {
 
 export async function getInitialGreeting(clientName?: string): Promise<string> {
     if (clientName) {
-        return `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! O que vamos pedir hoje?`;
+        return `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! Sou a UtópiZap, sua consultora gastronômica. Vamos montar um pedido delicioso hoje?`;
     }
   const persona = await generateAIPersona({});
   return persona.greeting;
@@ -132,7 +132,8 @@ function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput[
 export async function getAiResponse(
   history: Message[],
   currentOrder: OrderItem[],
-  client: Client
+  client: Client,
+  lastAction?: string,
 ): Promise<{ text: string; components?: DynamicComponentData[] }> {
     
   const knowledgeBase = await getKnowledgeBase();
@@ -144,6 +145,7 @@ export async function getAiResponse(
       menu: JSON.stringify(knowledgeBase),
       currentOrder: JSON.stringify(currentOrder),
       client: JSON.stringify(client),
+      lastAction: lastAction,
   });
   
   const components = mapAiComponentsToAppComponents(response.components || []);

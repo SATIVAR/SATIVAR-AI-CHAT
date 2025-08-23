@@ -80,6 +80,9 @@ export default function Home() {
         role: 'ai',
         content: greeting,
         timestamp: new Date(),
+        components: [
+          { type: 'quickReplyButton', label: 'Sim, ver cardápio', payload: 'Gostaria de ver o cardápio' }
+        ]
       };
       updateChatHistory([initialMessage]);
     } catch (error) {
@@ -102,7 +105,7 @@ export default function Home() {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
   }
 
-  const handleSendMessage = useCallback(async (text: string) => {
+  const handleSendMessage = useCallback(async (text: string, lastAction?: string) => {
     if (!text.trim() || isLoading || !client) return;
 
     const userMessage: Message = {
@@ -117,7 +120,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const res = await getAiResponse(newMessages, order, client);
+      const res = await getAiResponse(newMessages, order, client, lastAction);
       
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -177,9 +180,10 @@ export default function Home() {
     updateChatHistory(newMessages);
     setIsLoading(true);
 
-    const tempHistoryForAI = [...newMessages, { id: 'temp-user-action', role: 'user', content: `Adicionei ${product.name} ao meu pedido.`, timestamp: new Date() }];
+    // This explicitly tells the AI what just happened.
+    const tempUserContentForAI = `O usuário adicionou o item '${product.name}' ao pedido.`;
 
-    getAiResponse(tempHistoryForAI, updatedOrder!, client).then(res => {
+    getAiResponse([...newMessages, { id: 'temp-user-action', role: 'user', content: tempUserContentForAI, timestamp: new Date() }], updatedOrder!, client, 'item_added').then(res => {
         const aiMessage: Message = {
             id: `ai-${Date.now()}`,
             role: 'ai',
@@ -221,6 +225,9 @@ export default function Home() {
       setIsAwaitingOrderDetails(false);
 
       setTimeout(() => {
+        // Reset the chat history and fetch a new greeting
+        localStorage.removeItem(CHAT_HISTORY_KEY);
+        setMessages([]);
         fetchGreeting(data.name);
       }, 8000);
 
