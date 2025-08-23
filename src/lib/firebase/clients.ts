@@ -1,6 +1,17 @@
 
 import { db } from './admin';
 import { Client } from '../types';
+import { Timestamp } from 'firebase-admin/firestore';
+
+// Helper function to convert Firestore timestamp to a serializable Date object
+const toSerializableDate = (timestamp: any): Date => {
+    if (timestamp instanceof Timestamp) {
+        return timestamp.toDate();
+    }
+    // Handle cases where it might already be a Date object or a string
+    return new Date(timestamp);
+};
+
 
 export async function findClientByPhone(phone: string): Promise<Client | null> {
     if (!phone) return null;
@@ -13,8 +24,8 @@ export async function findClientByPhone(phone: string): Promise<Client | null> {
     return { 
         id: clientDoc.id, 
         ...clientData,
-        createdAt: (clientData.createdAt.toDate()),
-        lastOrderAt: (clientData.lastOrderAt.toDate()),
+        createdAt: toSerializableDate(clientData.createdAt),
+        lastOrderAt: toSerializableDate(clientData.lastOrderAt),
     } as Client;
 }
 
@@ -29,8 +40,8 @@ export async function createClient(clientData: Partial<Client>): Promise<{succes
         const docRef = await db.collection('clients').add({
             ...clientData,
             isActive: true, // Garante que novos clientes sejam ativos
-            createdAt: new Date(),
-            lastOrderAt: new Date(),
+            createdAt: Timestamp.now(), // Use Admin Timestamp
+            lastOrderAt: Timestamp.now(), // Use Admin Timestamp
         });
         return { success: true, id: docRef.id };
     } catch (error) {
@@ -61,26 +72,29 @@ export async function getClients({ searchQuery = '', page = 1, limit = 10 }: { s
 
     query = query.where('isActive', '==', true);
 
-    // A busca por nome exato é complexa e cara no Firestore.
-    // Uma abordagem mais simples é filtrar no lado do cliente ou usar um serviço de busca como Algolia.
-    // Por simplicidade, vamos buscar todos e filtrar depois se houver uma query.
-    // Para paginação real, você precisaria de cursores (startAfter).
-
+    // Para evitar a necessidade de múltiplos índices compostos, a ordenação e busca serão tratadas após a leitura inicial.
+    // Para grandes datasets, uma solução com um serviço de busca como Algolia seria mais eficiente.
     const snapshot = await query.orderBy('name').get();
     
-    let clients = snapshot.docs.map(doc => {
+    let clients: Client[] = snapshot.docs.map(doc => {
          const data = doc.data();
         return {
             id: doc.id,
             name: data.name,
             phone: data.phone,
             address: data.address || {},
-            createdAt: data.createdAt.toDate().toISOString(),
-        } as unknown as Client;
+            createdAt: toSerializableDate(data.createdAt),
+            lastOrderAt: toSerializableDate(data.lastOrderAt),
+            isActive: data.isActive
+        } as Client;
     });
 
     if (searchQuery) {
-        clients = clients.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery));
+        const lowercasedQuery = searchQuery.toLowerCase();
+        clients = clients.filter(c => 
+            c.name.toLowerCase().includes(lowercasedQuery) || 
+            c.phone.includes(lowercasedQuery)
+        );
     }
     
     const totalClients = clients.length;

@@ -17,6 +17,14 @@ export default async function ClientsPage({
   
   const data = await getClients({ searchQuery, page, limit });
 
+  // Serializa os dados antes de passar para o componente cliente
+  const serializableClients = data.clients.map(client => ({
+    ...client,
+    createdAt: client.createdAt instanceof Date ? client.createdAt.toISOString() : new Date(client.createdAt).toISOString(),
+    lastOrderAt: client.lastOrderAt instanceof Date ? client.lastOrderAt.toISOString() : new Date(client.lastOrderAt).toISOString(),
+  }));
+
+
   const handleSaveClient = async (clientData: Partial<Client>) => {
     'use server';
     let result;
@@ -46,7 +54,7 @@ export default async function ClientsPage({
         </CardHeader>
         <CardContent>
           <ClientsDataTable 
-            data={data.clients as unknown as Client[]}
+            data={serializableClients as unknown as Client[]}
             pageCount={data.totalPages}
             onSave={handleSaveClient}
             onDelete={handleDeleteClient}
