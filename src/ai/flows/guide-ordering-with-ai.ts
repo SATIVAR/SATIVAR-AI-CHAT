@@ -88,8 +88,8 @@ const findUpsellAndCrossSell = ai.defineTool({
     suggestions: z.array(z.string()).describe('List of suggested upsell and cross-sell item names.'),
   }),
 },
-async (input) => {
-  const { orderedItemNames, menuString } = input;
+async (toolInput) => {
+  const { orderedItemNames, menuString } = toolInput;
   const menu: Menu = JSON.parse(menuString);
   const suggestions: string[] = [];
   if (orderedItemNames.length === 0) {
@@ -193,4 +193,3 @@ const guideOrderingFlow = ai.defineFlow(
     return output!;
   }
 );
-

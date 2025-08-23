@@ -8,21 +8,11 @@ export async function createOrder(order: Omit<Order, 'id'>): Promise<string> {
 
     const clientQuery = await db.collection('clients').where('phone', '==', clientInfo.phone).limit(1).get();
     
-    if (clientQuery.empty) {
-        const newClientData = {
-             name: clientInfo.name,
-             phone: clientInfo.phone,
-             address: (clientInfo as any).address || {},
-             createdAt: Timestamp.now(),
-             lastOrderAt: Timestamp.now(),
-             isActive: true,
-        }
-        await db.collection('clients').add(newClientData);
-    } else {
+    if (!clientQuery.empty) {
         const clientDoc = clientQuery.docs[0];
         await clientDoc.ref.update({
             lastOrderAt: Timestamp.now(),
-            address: (clientInfo as any).address || clientDoc.data().address || {},
+            address: (order as any).clientInfo.address || clientDoc.data().address || {},
             name: clientInfo.name || clientDoc.data().name,
         });
     }

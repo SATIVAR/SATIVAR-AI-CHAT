@@ -82,6 +82,7 @@ export interface UserDetails {
 
 export interface Order {
   id?: string;
+  clientId: string;
   clientInfo: UserDetails;
   items: {
     productId: string;

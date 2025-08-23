@@ -137,9 +137,8 @@ export async function getAiResponse(
 ): Promise<{ text: string; components?: DynamicComponentData[] }> {
     
   const knowledgeBase = await getKnowledgeBase();
-
   const aiHistory = history.map(msg => ({ role: msg.role, content: msg.content }));
-
+  
   const response = await guideOrderingWithAI({
       history: aiHistory,
       menu: JSON.stringify(knowledgeBase),
@@ -153,13 +152,18 @@ export async function getAiResponse(
   return { text: response.text, components };
 }
 
-export async function submitOrder(customer: UserDetails, orderItems: OrderItem[]): Promise<{ success: boolean; orderId?: string }> {
+export async function submitOrder(client: Client, orderItems: OrderItem[]): Promise<{ success: boolean; orderId?: string }> {
   console.log("Submitting order to Firestore...");
   
   const total = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const newOrder: Omit<Order, 'id'> = {
-    clientInfo: customer,
+    clientId: client.id!,
+    clientInfo: {
+        name: client.name,
+        phone: client.phone,
+        address: client.address,
+    },
     items: orderItems.map(item => ({
       productId: item.id,
       productName: item.name,

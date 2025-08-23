@@ -155,17 +155,15 @@ export default function Home() {
     if (!product) return;
   
     let updatedOrder: OrderItem[];
-    setOrder(prevOrder => {
-      const existingItem = prevOrder.find(item => item.id === productId);
-      if (existingItem) {
-        updatedOrder = prevOrder.map(item =>
-          item.id === productId ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      } else {
-        updatedOrder = [...prevOrder, { ...product, quantity: 1, unitPrice: product.price, productName: product.name }];
-      }
-      return updatedOrder;
-    });
+    const existingItem = order.find(item => item.id === productId);
+    if (existingItem) {
+      updatedOrder = order.map(item =>
+        item.id === productId ? { ...item, quantity: item.quantity + 1 } : item
+      );
+    } else {
+      updatedOrder = [...order, { ...product, quantity: 1, unitPrice: product.price, productName: product.name }];
+    }
+    setOrder(updatedOrder);
 
     const confirmationText = `Adicionado: 1x ${product.name}.`;
     const confirmationMessage: Message = {
@@ -183,7 +181,7 @@ export default function Home() {
     // This explicitly tells the AI what just happened.
     const tempUserContentForAI = `O usuário adicionou o item '${product.name}' ao pedido.`;
 
-    getAiResponse([...newMessages, { id: 'temp-user-action', role: 'user', content: tempUserContentForAI, timestamp: new Date() }], updatedOrder!, client, 'item_added').then(res => {
+    getAiResponse([...newMessages, { id: 'temp-user-action', role: 'user', content: tempUserContentForAI, timestamp: new Date() }], updatedOrder, client, 'item_added').then(res => {
         const aiMessage: Message = {
             id: `ai-${Date.now()}`,
             role: 'ai',
