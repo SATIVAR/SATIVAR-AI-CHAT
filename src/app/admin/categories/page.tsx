@@ -30,6 +30,10 @@ export default async function CategoriesPage() {
             imageUrl: imageUrl || 'https://placehold.co/600x400.png',
             nextStepSuggestion: formData.get('nextStepSuggestion') as string || undefined,
         };
+        
+        if (categoryData.nextStepSuggestion === 'none') {
+            categoryData.nextStepSuggestion = '';
+        }
 
         let result;
         if (categoryId) {

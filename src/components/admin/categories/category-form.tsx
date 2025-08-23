@@ -68,7 +68,9 @@ export default function CategoryForm({ isOpen, setIsOpen, category, allCategorie
 
         const formData = new FormData();
         Object.entries(values).forEach(([key, value]) => {
-            if (value !== null && value !== undefined) {
+            if (value === 'none') {
+                formData.append(key, '');
+            } else if (value !== null && value !== undefined) {
                  formData.append(key, String(value));
             }
         });
@@ -157,7 +159,7 @@ export default function CategoryForm({ isOpen, setIsOpen, category, allCategorie
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="">Nenhuma</SelectItem>
+                                            <SelectItem value="none">Nenhuma</SelectItem>
                                             {allCategories.filter(c => c.id !== category?.id).map(cat => (
                                                 <SelectItem key={cat.id} value={cat.id!}>{cat.name}</SelectItem>
                                             ))}
