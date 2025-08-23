@@ -10,12 +10,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [isVerified, setIsVerified] = useState(false);
 
+  // A página de login/cadastro é a única pública dentro de /admin
+  const isPublicPage = pathname === '/admin';
+
   useEffect(() => {
     const session = localStorage.getItem('utopizap-admin-session');
     
-    // A página de login/cadastro é a única pública dentro de /admin
-    const isPublicPage = pathname === '/admin';
-
     if (!session && !isPublicPage) {
       // Se NÃO há sessão E o usuário NÃO está na página de login, redirecione
       router.push('/admin');
@@ -23,14 +23,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       // Se há sessão ou se é a página pública, permite a renderização
       setIsVerified(true);
     }
-  }, [pathname, router]);
+  }, [pathname, router, isPublicPage]);
 
-  // Não renderiza nada até que a verificação seja concluída,
-  // exceto se for a página pública (para evitar um flash de conteúdo).
-  if (!isVerified && !isPublicPage) {
-    return null; // ou um loader global
+  // Se a página não for pública e a verificação não estiver concluída, mostre um loader/tela em branco.
+  if (!isPublicPage && !isVerified) {
+    return null; 
   }
 
+  // Renderiza o conteúdo para a página pública ou para páginas protegidas após a verificação.
   return (
     <>
       {children}
