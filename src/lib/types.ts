@@ -50,7 +50,11 @@ export interface OrderSummaryCardData {
     type: 'orderSummaryCard';
 }
 
-export type DynamicComponentData = ProductCardData | QuickReplyButtonData | OrderSummaryCardData;
+export interface OrderControlButtonsData {
+    type: 'orderControlButtons';
+}
+
+export type DynamicComponentData = ProductCardData | QuickReplyButtonData | OrderSummaryCardData | OrderControlButtonsData;
 
 export interface Message {
   id: string;

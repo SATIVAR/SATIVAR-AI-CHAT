@@ -3,36 +3,31 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Message, OrderItem } from '@/lib/types';
+import { Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 
-import ProductCard from '../dynamic/product-card';
 import QuickReplyButton from '../dynamic/quick-reply-button';
 import OrderSummaryCard from '../dynamic/order-summary-card';
-import { Bot, User } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { Logo } from '../icons/logo';
 import CompactProductCard from '../dynamic/compact-product-card';
+import OrderControlButtons from '../dynamic/order-control-buttons';
 
 interface MessageBubbleProps {
   message: Message;
-  order: OrderItem[];
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
-  onUpdateOrder: (productId: string, quantity: number) => void;
   isLast: boolean;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ 
   message,
-  order,
   onSendMessage,
   onAddToOrder,
-  onUpdateOrder,
   isLast
  }) => {
   const isUser = message.role === 'user';
@@ -121,7 +116,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                   case 'quickReplyButton':
                                       return <QuickReplyButton key={index} data={component} onSendMessage={onSendMessage} />;
                                   case 'orderSummaryCard':
-                                      return <OrderSummaryCard key={index} order={order} onUpdateOrder={onUpdateOrder} />;
+                                      return <OrderSummaryCard />;
+                                  case 'orderControlButtons':
+                                      return <OrderControlButtons key={index} onSendMessage={onSendMessage} />;
                                   default:
                                       return null;
                               }

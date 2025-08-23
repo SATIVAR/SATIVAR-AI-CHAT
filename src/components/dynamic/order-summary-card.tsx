@@ -4,19 +4,27 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { OrderItem } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
-import { Button } from '../ui/button';
-import { MinusCircle, PlusCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface OrderSummaryCardProps {
-  order: OrderItem[];
-  onUpdateOrder: (productId: string, quantity: number) => void;
+  order?: OrderItem[];
+  onUpdateOrder?: (productId: string, quantity: number) => void;
 }
 
-const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ order, onUpdateOrder }) => {
-  const total = order.reduce((acc, item) => acc + item.price * item.quantity, 0);
+const OrderSummaryCard: React.FC<OrderSummaryCardProps> = () => {
+    const { toast } = useToast();
+
+    // In this new flow, the summary card is just a placeholder.
+    // The actual order details are managed in the CartModal.
+    React.useEffect(() => {
+        toast({
+            title: 'Revise seu pedido',
+            description: 'Por favor, preencha seus dados de entrega abaixo para confirmar o pedido.',
+        });
+    }, [toast]);
+
 
   const variants = {
     hidden: { opacity: 0, scale: 0.95 },
@@ -32,42 +40,16 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ order, onUpdateOrde
     >
       <Card className="w-full shadow-lg border-primary/20">
         <CardHeader>
-          <CardTitle>🧾 Resumo do Pedido</CardTitle>
+          <CardTitle>🧾 Quase lá!</CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-48 pr-4">
-            <div className="space-y-4">
-              {order.length > 0 ? order.map((item) => (
-                <div key={item.id} className="flex justify-between items-center text-sm">
-                  <div className="flex-grow">
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-muted-foreground">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => onUpdateOrder(item.id, item.quantity - 1)}>
-                        <MinusCircle size={16} />
-                     </Button>
-                     <span className="font-bold w-4 text-center">{item.quantity}</span>
-                     <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => onUpdateOrder(item.id, item.quantity + 1)}>
-                        <PlusCircle size={16} />
-                     </Button>
-                  </div>
-                </div>
-              )) : <p className="text-muted-foreground text-sm">Seu carrinho está vazio.</p>}
-            </div>
-          </ScrollArea>
+            <p className="text-sm text-muted-foreground">
+                Seu pedido está pronto. Para finalizar, por favor, preencha seus dados de entrega e contato logo abaixo.
+            </p>
         </CardContent>
         <CardFooter className="flex-col items-stretch space-y-2 pt-4 border-t">
-          <div className="flex justify-between items-center text-lg font-bold mt-2">
-            <p>Total</p>
-            <p className="text-primary">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
-            </p>
-          </div>
            <p className="text-xs text-muted-foreground text-center pt-2">
-              Se estiver tudo certo, por favor, preencha seus dados abaixo para finalizar.
+              Você pode revisar os itens do seu pedido a qualquer momento clicando no ícone de carrinho no canto superior direito.
           </p>
         </CardFooter>
       </Card>

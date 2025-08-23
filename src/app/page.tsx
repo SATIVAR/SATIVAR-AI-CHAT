@@ -10,6 +10,7 @@ import WelcomeScreen from '@/components/welcome-screen';
 
 const USER_DETAILS_KEY = 'utopizap_user_details';
 const CHAT_HISTORY_KEY = 'utopizap_chat_history';
+const ORDER_KEY = 'utopizap_order';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,11 +41,18 @@ export default function Home() {
         } else {
           fetchGreeting(parsedClient.name);
         }
+
+        const storedOrder = localStorage.getItem(ORDER_KEY);
+        if (storedOrder) {
+            setOrder(JSON.parse(storedOrder));
+        }
+
       }
     } catch (error) {
       console.error("Error reading from localStorage:", error);
       localStorage.removeItem(CHAT_HISTORY_KEY);
       localStorage.removeItem(USER_DETAILS_KEY);
+      localStorage.removeItem(ORDER_KEY);
     } finally {
       setIsLoading(false);
     }
@@ -99,6 +107,11 @@ export default function Home() {
     }
   };
 
+  const updateOrder = (updatedOrder: OrderItem[]) => {
+      setOrder(updatedOrder);
+      localStorage.setItem(ORDER_KEY, JSON.stringify(updatedOrder));
+  }
+
 
   const updateChatHistory = (updatedMessages: Message[]) => {
     setMessages(updatedMessages);
@@ -120,7 +133,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const res = await getAiResponse(newMessages, order, client, lastAction);
+      const res = await getAiResponse(newMessages, order, client);
       
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -132,6 +145,14 @@ export default function Home() {
 
       if (res.components?.some(c => c.type === 'orderSummaryCard')) {
          setIsAwaitingOrderDetails(true);
+      }
+
+      // Handle cancel action
+      if (text.toLowerCase().includes('cancelar pedido')) {
+        handleCancelOrder();
+        // The AI message will be the confirmation, so we add it and stop.
+        updateChatHistory([...newMessages, aiMessage]);
+        return;
       }
 
       updateChatHistory([...newMessages, aiMessage]);
@@ -163,40 +184,11 @@ export default function Home() {
     } else {
       updatedOrder = [...order, { ...product, quantity: 1, unitPrice: product.price, productName: product.name }];
     }
-    setOrder(updatedOrder);
+    updateOrder(updatedOrder);
 
-    const confirmationText = `Adicionado: 1x ${product.name}.`;
-    const confirmationMessage: Message = {
-      id: `confirm-${Date.now()}`,
-      role: 'ai',
-      isConfirmation: true,
-      content: confirmationText,
-      timestamp: new Date(),
-    };
+    // No longer sends a message to the AI, just updates the state.
 
-    const newMessages = [...messages, confirmationMessage];
-    updateChatHistory(newMessages);
-    setIsLoading(true);
-
-    // This explicitly tells the AI what just happened.
-    const tempUserContentForAI = `O usuário adicionou o item '${product.name}' ao pedido.`;
-
-    getAiResponse([...newMessages, { id: 'temp-user-action', role: 'user', content: tempUserContentForAI, timestamp: new Date() }], updatedOrder, client, 'item_added').then(res => {
-        const aiMessage: Message = {
-            id: `ai-${Date.now()}`,
-            role: 'ai',
-            content: res.text,
-            components: res.components,
-            timestamp: new Date(),
-        };
-        updateChatHistory([...newMessages, aiMessage]);
-    }).catch(error => {
-        console.error("Failed to get post-addition AI response:", error);
-    }).finally(() => {
-        setIsLoading(false);
-    });
-
-  }, [messages, order, client]);
+  }, [order, client]);
 
   const handleSubmitOrder = async (data: UserDetails) => {
     setIsLoading(true);
@@ -220,6 +212,7 @@ export default function Home() {
       const updatedChat = messages.filter(m => !m.components?.some(c => c.type === 'orderSummaryCard'));
       updateChatHistory([...updatedChat, finalMessage]);
       setOrder([]);
+      localStorage.removeItem(ORDER_KEY);
       setIsAwaitingOrderDetails(false);
 
       setTimeout(() => {
@@ -245,12 +238,19 @@ export default function Home() {
   }
 
   const handleUpdateOrder = (productId: string, quantity: number) => {
+    let updatedOrder;
     if (quantity <= 0) {
-      setOrder(prev => prev.filter(item => item.id !== productId));
+      updatedOrder = order.filter(item => item.id !== productId);
     } else {
-      setOrder(prev => prev.map(item => item.id === productId ? { ...item, quantity } : item));
+      updatedOrder = order.map(item => item.id === productId ? { ...item, quantity } : item);
     }
+    updateOrder(updatedOrder);
   };
+
+  const handleCancelOrder = () => {
+    updateOrder([]);
+    setIsAwaitingOrderDetails(false);
+  }
 
   if (!client) {
     return <WelcomeScreen onLogin={handleLogin} isLoading={isLoading} />
@@ -266,6 +266,7 @@ export default function Home() {
       onAddToOrder={handleAddToOrder}
       onSubmitOrder={handleSubmitOrder}
       onUpdateOrder={handleUpdateOrder}
+      onCancelOrder={handleCancelOrder}
       userDetails={client}
     />
   );

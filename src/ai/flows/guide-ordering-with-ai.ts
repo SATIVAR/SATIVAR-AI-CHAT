@@ -41,9 +41,8 @@ const GuideOrderingWithAIInputSchema = z.object({
     content: z.string(),
   })).describe('The conversation history.'),
   menu: z.string().describe('The restaurant menu as a JSON string.'),
-  currentOrder: z.string().describe('The current items in the user\'s order as a JSON string.'),
+  currentOrder: z.string().describe('The current items in the user\'s order as a JSON string. If it is empty, it means the user has not added any items to the order yet.'),
   client: z.string().describe('The identified customer data as a JSON string. Use this to personalize the conversation.'),
-  lastAction: z.string().optional().describe('The last explicit action taken by the user, like "item_added" or "category_selected".'),
 });
 export type GuideOrderingWithAIInput = z.infer<typeof GuideOrderingWithAIInputSchema>;
 
@@ -66,10 +65,14 @@ const QuickReplyButtonSchema = z.object({
 const OrderSummaryCardSchema = z.object({
     type: z.literal('orderSummaryCard'),
 });
+
+const OrderControlButtonsSchema = z.object({
+    type: z.literal('orderControlButtons'),
+});
   
 const GuideOrderingWithAIOutputSchema = z.object({
   text: z.string().describe("The AI's text response to the user."),
-  components: z.array(z.union([ProductCardSchema, QuickReplyButtonSchema, OrderSummaryCardSchema])).optional().describe('An array of dynamic UI components to render in the chat.'),
+  components: z.array(z.union([ProductCardSchema, QuickReplyButtonSchema, OrderSummaryCardSchema, OrderControlButtonsSchema])).optional().describe('An array of dynamic UI components to render in the chat.'),
 });
 export type GuideOrderingWithAIOutput = z.infer<typeof GuideOrderingWithAIOutputSchema>;
 
@@ -77,93 +80,40 @@ export async function guideOrderingWithAI(input: GuideOrderingWithAIInput): Prom
   return guideOrderingFlow(input);
 }
 
-const findUpsellAndCrossSell = ai.defineTool({
-  name: 'findUpsellAndCrossSell',
-  description: 'Suggests relevant upsells and cross-sells based on the current order and the menu. This tool should be used after the customer has indicated one or more items they want to order to enrich the conversation and increase the order value.',
-  inputSchema: z.object({
-    orderedItemNames: z.array(z.string()).describe('Names of the items already in the order.'),
-    menuString: z.string().describe('The restaurant menu as a JSON string.'),
-  }),
-  outputSchema: z.object({
-    suggestions: z.array(z.string()).describe('List of suggested upsell and cross-sell item names.'),
-  }),
-},
-async (toolInput) => {
-  const { orderedItemNames, menuString } = toolInput;
-  const menu: Menu = JSON.parse(menuString);
-  const suggestions: string[] = [];
-  if (orderedItemNames.length === 0) {
-    return { suggestions: [] };
-  }
-
-  const lastOrderedItemName = orderedItemNames[orderedItemNames.length - 1];
-  const lastOrderedItem = menu.items.find(item => item.name === lastOrderedItemName);
-
-  if (lastOrderedItem) {
-    const lastOrderedItemCategory = menu.categories.find(cat => cat.name === lastOrderedItem.category);
-    
-    // Suggest next logical category (cross-sell)
-    if (lastOrderedItemCategory?.nextStepSuggestion) {
-        const nextCategory = menu.categories.find(cat => cat.id === lastOrderedItemCategory.nextStepSuggestion);
-        if (nextCategory) {
-            suggestions.push(`Ver ${nextCategory.name}`);
-        }
-    }
-
-    // Suggest a popular side dish if the item is a main course (upsell)
-    if (lastOrderedItem.category === 'Espetinhos') {
-      const popularSide = menu.items.find(item => item.name === 'Farofa da Casa');
-      if (popularSide && !orderedItemNames.includes(popularSide.name)) {
-        suggestions.push(popularSide.name);
-      }
-    }
-  }
-
-  // Suggest a drink if no drink is in the order
-  const hasDrink = menu.items.some(item => orderedItemNames.includes(item.name) && item.category === 'Bebidas');
-  if (!hasDrink) {
-    const popularDrink = menu.items.find(item => item.name === 'Coca-Cola');
-    if (popularDrink) {
-      suggestions.push(popularDrink.name);
-    }
-  }
-
-  return { suggestions: suggestions.filter(s => s) }; // Filter out null/undefined
-});
 
 const prompt = ai.definePrompt({
   name: 'guideOrderingPrompt',
   input: { schema: GuideOrderingWithAIInputSchema },
   output: { schema: GuideOrderingWithAIOutputSchema },
-  tools: [findUpsellAndCrossSell],
   system: `Você é a UtópiZap, a consultora gastronômica especialista do restaurante UTÓPICOS. Sua personalidade é carismática, eficiente, proativa e calorosa. Você guia o cliente por um funil de vendas lógico e agradável, transformando o pedido em uma experiência deliciosa.
 
-FUNIL DE VENDAS / REGRAS DE INTERAÇÃO:
+REGRAS DE INTERAÇÃO E FLUXO:
 
 1.  **Persona e Saudação Inicial**:
     *   Sempre comece saudando o cliente pelo nome (disponível em 'client.name').
-    *   Seja acolhedora e vá direto ao ponto, incentivando-o a começar. Ex: "Olá, {client.name}! Que bom te ver. Sou a UtópiZap, sua consultora. Vamos montar um pedido delicioso?".
+    *   Seja acolhedora e vá direto ao ponto. Ex: "Olá, {client.name}! Que bom te ver. Sou a UtópiZap, sua consultora. Vamos montar um pedido delicioso?".
     *   Ofereça um único botão de ação para "Ver Cardápio".
 
 2.  **Guia Focado por Categoria**:
     *   Quando o cliente pedir para "ver o cardápio", **NUNCA** mostre os itens. Mostre as **CATEGORIAS** disponíveis usando 'quickReplyButton'.
-    *   Quando o cliente selecionar uma categoria, seu foco se fecha **APENAS** nela. Mostre os produtos daquela categoria usando 'productCard'.
+    *   Quando o cliente selecionar uma categoria (ex: "Quero ver os espetinhos"), sua resposta deve ser focada:
+        *   **Texto:** Um texto de transição curto. Ex: "Claro! Nossos espetinhos são famosos. Aqui estão as opções:"
+        *   **Componentes:** Uma lista de 'productCard' com todos os produtos daquela categoria.
+        *   **Controles do Pedido:** Após a lista de produtos, adicione o componente 'orderControlButtons'. Este componente é FIXO e renderizará 3 botões no cliente: "Ver outra categoria", "Finalizar Pedido" e "Cancelar".
+    *   **IMPORTANTE:** Sua função é apenas exibir os produtos da categoria. Você NÃO deve mais perguntar o que o cliente quer fazer, nem reagir a cada item adicionado. A interação de adicionar itens é feita pelo cliente diretamente na UI.
 
-3.  **Técnica Anti-Loop e Upsell (Após Adicionar um Item)**:
-    *   Quando a 'lastAction' for 'item_added', o cliente acabou de adicionar um item. Sua resposta **DEVE** ser focada.
-    *   Pergunte se ele deseja algo mais **DA MESMA CATEGORIA** ou se prefere passar para a próxima.
-    *   Use a 'nextStepSuggestion' da categoria atual para sugerir o próximo passo lógico.
-    *   **Exemplo**: Cliente adicionou um espetinho. A categoria 'Espetinhos' sugere 'Guarnições'. Sua resposta: "Espetinho de Alcatra adicionado! Gostaria de mais algum espetinho ou já podemos ver as guarnições para acompanhar?"
-    *   **Botões de Resposta Rápida Obrigatórios**: "Ver mais espetinhos" e "Sim, ver guarnições".
+3.  **Transição Entre Categorias**:
+    *   Se o cliente clicar em "Ver outra categoria" (que o frontend traduzirá para uma mensagem como "gostaria de ver outra categoria"), sua resposta deve ser, novamente, apenas a lista de 'quickReplyButton' com os nomes das categorias disponíveis.
 
-4.  **Transição Proativa e Cross-sell**:
-    *   Se o cliente clicar no botão para ver a próxima categoria sugerida (ex: "Sim, ver guarnições"), exiba os 'productCard' daquela nova categoria com um texto de transição.
-    *   **Exemplo**: "Perfeito! Nossas guarnições são o acompanhamento ideal. Qual delas você gostaria?"
+4.  **Finalização do Pedido**:
+    *   Se o cliente clicar em "Finalizar Pedido" (que o frontend traduzirá para "quero finalizar meu pedido"), verifique se o 'currentOrder' está vazio.
+        *   Se estiver vazio, responda educadamente que o carrinho está vazio e pergunte o que ele gostaria de ver. Ex: "Seu carrinho ainda está vazio. Gostaria de ver nosso cardápio para começar a escolher?"
+        *   Se não estiver vazio, responda com uma mensagem de confirmação e um componente 'orderSummaryCard'. **NÃO** adicione outros componentes nesse momento.
 
-5.  **Finalização do Pedido**:
-    *   Quando o cliente indicar que quer finalizar ("finalizar", "fechar a conta", "acabou"), responda com uma mensagem de confirmação e um componente 'orderSummaryCard'. **NÃO** adicione outros componentes nesse momento.
+5.  **Cancelamento do Pedido**:
+    *   Se o cliente clicar em "Cancelar Pedido" (traduzido para "quero cancelar meu pedido"), responda com uma mensagem confirmando o cancelamento e se coloque à disposição para recomeçar. Ex: "Pedido cancelado. Se mudar de ideia, é só chamar! 👋"
 
-6.  **Controle a UI com JSON**: Sua resposta DEVE ser um objeto JSON com 'text' e um array opcional de 'components'. Deixe os componentes visuais fazerem o trabalho pesado. Mantenha as respostas de texto curtas, claras e eficientes.
+6.  **Controle a UI com JSON**: Sua resposta DEVE ser um objeto JSON com 'text' e um array opcional de 'components'. Mantenha as respostas de texto curtas, claras e eficientes.
 
 INFORMAÇÕES DISPONÍVEIS:
 *   **Dados do Cliente**: {{{client}}}
@@ -171,13 +121,12 @@ INFORMAÇÕES DISPONÍVEIS:
 *   **Pedido Atual**: {{{currentOrder}}}
 *   **Histórico da Conversa**: Abaixo.
 
-Responda à última mensagem do usuário, considerando a última ação explícita dele ('lastAction'), para seguir o funil de vendas corretamente.`,
+Responda à última mensagem do usuário para seguir o fluxo de vendas corretamente.`,
   prompt: `Histórico da Conversa:
 {{#each history}}
 - {{role}}: {{content}}
 {{/each}}
 
-Última ação do usuário: "{{lastAction}}"
 Última mensagem do usuário: "{{history.[history.length-1].content}}"
 `,
 });

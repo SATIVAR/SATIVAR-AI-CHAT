@@ -10,23 +10,18 @@ import { ChatBubbleSkeleton } from './skeletons';
 
 interface ChatMessagesProps {
   messages: Message[];
-  order: OrderItem[];
-  isLoading: boolean;
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
-  onUpdateOrder: (productId: string, quantity: number) => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({ 
     messages, 
-    order,
-    isLoading,
     onSendMessage,
     onAddToOrder,
-    onUpdateOrder,
  }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const isLoading = messages[messages.length - 1]?.role !== 'user' && messages.length > 0;
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -46,10 +41,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             <MessageBubble
               key={message.id}
               message={message}
-              order={order}
               onSendMessage={onSendMessage}
               onAddToOrder={onAddToOrder}
-              onUpdateOrder={onUpdateOrder}
               isLast={index === messages.length - 1}
             />
           ))}

@@ -120,6 +120,10 @@ function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput[
         return {
             type: 'orderSummaryCard'
         };
+      case 'orderControlButtons':
+        return {
+            type: 'orderControlButtons'
+        };
       default:
         // This will catch any unexpected component types from the AI
         console.warn('Unknown component type received from AI:', comp);
@@ -133,7 +137,6 @@ export async function getAiResponse(
   history: Message[],
   currentOrder: OrderItem[],
   client: Client,
-  lastAction?: string,
 ): Promise<{ text: string; components?: DynamicComponentData[] }> {
     
   const knowledgeBase = await getKnowledgeBase();
@@ -144,7 +147,6 @@ export async function getAiResponse(
       menu: JSON.stringify(knowledgeBase),
       currentOrder: JSON.stringify(currentOrder),
       client: JSON.stringify(client),
-      lastAction: lastAction,
   });
   
   const components = mapAiComponentsToAppComponents(response.components || []);

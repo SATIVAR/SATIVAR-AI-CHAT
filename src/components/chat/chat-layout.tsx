@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Message, OrderItem, UserDetails, Client } from '@/lib/types';
 import ChatMessages from './chat-messages';
 import ChatInput from './chat-input';
@@ -9,6 +9,9 @@ import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
 import UserDetailsForm from '../dynamic/user-details-form';
 import { ThemeToggle } from '../theme-toggle';
+import { Button } from '../ui/button';
+import { ShoppingCart } from 'lucide-react';
+import CartModal from './cart-modal';
 
 interface ChatLayoutProps {
   messages: Message[];
@@ -19,6 +22,7 @@ interface ChatLayoutProps {
   onAddToOrder: (productId: string) => void;
   onSubmitOrder: (data: UserDetails) => void;
   onUpdateOrder: (productId: string, quantity: number) => void;
+  onCancelOrder: () => void;
   userDetails: Client | null;
 }
 
@@ -31,9 +35,14 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onAddToOrder,
   onSubmitOrder,
   onUpdateOrder,
+  onCancelOrder,
   userDetails
 }) => {
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const totalItems = order.reduce((acc, item) => acc + item.quantity, 0);
+
   return (
+    <>
     <div className="relative flex h-[100dvh] w-full flex-col items-center justify-center bg-secondary dark:bg-muted/40">
         <div className="absolute inset-0 bg-[url('/whatsapp-pattern.png')] bg-repeat opacity-5 dark:opacity-100" />
         <div className="z-10 flex h-full w-full max-w-2xl flex-col rounded-none border-0 bg-transparent shadow-2xl md:h-[95vh] md:rounded-2xl md:border md:bg-card/80 md:backdrop-blur-sm">
@@ -56,18 +65,24 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                         ) : "online"}
                     </p>
                 </div>
-                 <div className="absolute right-4 top-4">
+                 <div className="flex items-center gap-2">
                     <ThemeToggle />
+                    <Button variant="ghost" size="icon" className="relative" onClick={() => setIsCartOpen(true)}>
+                        <ShoppingCart className="h-6 w-6" />
+                        {totalItems > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                                {totalItems}
+                            </span>
+                        )}
+                        <span className="sr-only">Ver carrinho</span>
+                    </Button>
                 </div>
             </header>
 
             <ChatMessages
                 messages={messages}
-                order={order}
-                isLoading={isLoading}
                 onSendMessage={onSendMessage}
                 onAddToOrder={onAddToOrder}
-                onUpdateOrder={onUpdateOrder}
             />
             
             <footer className="w-full border-t border-border/80 bg-secondary/50 p-4 dark:bg-card">
@@ -85,6 +100,22 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
             </footer>
         </div>
     </div>
+    <CartModal 
+        isOpen={isCartOpen}
+        setIsOpen={setIsCartOpen}
+        order={order}
+        onUpdateOrder={onUpdateOrder}
+        onCancelOrder={() => {
+            onCancelOrder();
+            onSendMessage('quero cancelar meu pedido');
+            setIsCartOpen(false);
+        }}
+        onFinalizeOrder={() => {
+            onSendMessage('quero finalizar meu pedido');
+            setIsCartOpen(false);
+        }}
+    />
+    </>
   );
 };
 
