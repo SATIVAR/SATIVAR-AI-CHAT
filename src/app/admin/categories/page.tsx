@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import CategoriesDataTable from '@/components/admin/categories/categories-data-table';
 import { ProductCategory } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
-import { deleteFile, uploadFile } from '@/lib/firebase/actions';
 
 export default async function CategoriesPage() {
   
@@ -19,37 +18,23 @@ export default async function CategoriesPage() {
   const handleSaveCategory = async (formData: FormData) => {
     'use server';
     
-    const imageFile = formData.get('imageFile') as File | null;
     const categoryId = formData.get('id') as string | null;
-    let imageUrl = formData.get('imageUrl') as string;
 
     try {
-        if (imageFile && imageFile.size > 0) {
-            // 1. If updating and there's a new file, delete the old one first.
-            const oldImageUrl = formData.get('imageUrl') as string;
-            if (categoryId && oldImageUrl) {
-                // Extract file path from URL
-                const oldFilePath = new URL(oldImageUrl).pathname.split('/').slice(2).join('/');
-                await deleteFile(oldFilePath);
-            }
-            
-            // 2. Upload the new file via server action
-            const uploadResult = await uploadFile(formData);
-            if (uploadResult.error || !uploadResult.url) {
-                 throw new Error(uploadResult.error || 'Falha no upload da imagem.');
-            }
-            imageUrl = uploadResult.url;
-        }
-
         const categoryData: Partial<ProductCategory> = {
             name: formData.get('name') as string,
             description: formData.get('description') as string,
             order: Number(formData.get('order')),
-            imageUrl,
+            imageUrl: 'https://placehold.co/600x400.png', // Using placeholder
         };
 
         let result;
         if (categoryId) {
+            // Ensure we don't overwrite the existing image URL if not changed
+            const existingCategory = categories.find(c => c.id === categoryId);
+            if (existingCategory && !formData.has('imageFile')) {
+                categoryData.imageUrl = existingCategory.imageUrl;
+            }
             result = await updateCategory(categoryId, categoryData);
         } else {
             result = await createCategory(categoryData);
@@ -70,13 +55,7 @@ export default async function CategoriesPage() {
     'use server';
 
     try {
-        // Delete the image from storage first
-        if (imageUrl) {
-            const filePath = new URL(imageUrl).pathname.split('/').slice(2).join('/');
-            await deleteFile(filePath);
-        }
-        
-        // Then, delete the category document from Firestore
+        // Since we are not using storage, we don't need to delete the image
         const result = await deleteCategory(id);
         if (result.success) {
             revalidatePath('/admin/categories');
