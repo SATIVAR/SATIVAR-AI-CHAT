@@ -131,6 +131,10 @@ export default function Home() {
         nextState = 'RevisandoPedido';
     } else if (menuRef.current?.categories.some(c => c.name.toLowerCase() === text.toLowerCase() || `ver ${c.name.toLowerCase()}` === text.toLowerCase())) {
         nextState = 'MostrandoProdutos';
+    } else if (text.toLowerCase().includes('cancelar')) {
+        handleCancelOrder();
+        setIsLoading(false);
+        return;
     }
     setConversationState(nextState);
     
@@ -181,10 +185,25 @@ export default function Home() {
     }
     updateOrder(updatedOrder);
 
-    // After adding, immediately ask the AI what's next
-    handleSendMessage(`Adicionado: ${product.name}`, 'ItemAdicionado');
+    // Show a temporary confirmation message
+    const confirmationMessage: Message = {
+      id: `confirm-${Date.now()}`,
+      role: 'ai',
+      content: `Adicionado: 1x ${product.name}`,
+      timestamp: new Date(),
+      isConfirmation: true, // This is a new flag
+    };
 
-  }, [order, client, messages, handleSendMessage]);
+    updateChatHistory([...messages, confirmationMessage]);
+    
+    // Auto-remove the confirmation after a few seconds
+    setTimeout(() => {
+        setMessages(prevMessages => prevMessages.filter(m => m.id !== confirmationMessage.id));
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.filter(m => m.id !== confirmationMessage.id)));
+    }, 2000);
+
+
+  }, [order, client, messages]);
 
   const handleSubmitOrder = async (data: UserDetails) => {
     setIsLoading(true);
@@ -262,24 +281,21 @@ export default function Home() {
   };
 
   const handleCancelOrder = () => {
-    // Clear the order locally
     updateOrder([]);
     localStorage.removeItem(ORDER_KEY);
     setIsAwaitingOrderDetails(false);
 
-    // Reset conversation
     const cancelMessage: Message = {
       id: `ai-cancel-${Date.now()}`,
       role: 'ai',
       content: "Pedido cancelado. Se mudar de ideia, estou por aqui! 👋",
       timestamp: new Date(),
+      components: [
+        { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
+      ]
     };
     updateChatHistory([cancelMessage]);
-    
-    // Set a timeout to clear and start a new conversation
-    setTimeout(() => {
-        fetchGreeting(client?.name);
-    }, 2000);
+    setConversationState('AguardandoInicio');
   };
 
   if (!client) {
