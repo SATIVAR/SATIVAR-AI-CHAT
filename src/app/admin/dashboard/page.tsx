@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Utensils, Check, ChefHat, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const statusConfig = {
   Recebido: {
@@ -39,14 +40,7 @@ const statusConfig = {
     color: "bg-green-500",
     nextStatus: "Finalizado" as const,
     actionLabel: "Finalizar Pedido"
-  },
-  Finalizado: {
-    title: "Finalizados",
-    icon: <Check className="h-5 w-5" />,
-    color: "bg-gray-500",
-    nextStatus: null,
-    actionLabel: ""
-  },
+  }
 };
 
 
@@ -54,8 +48,8 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
     const totalItems = order.items.reduce((acc, item) => acc + item.quantity, 0);
     const createdAtDate = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt as any);
 
-    const config = statusConfig[order.status];
-    if (order.status === 'Cancelado' || !config) return null;
+    const config = statusConfig[order.status as keyof typeof statusConfig];
+    if (order.status === 'Cancelado' || order.status === 'Finalizado' || !config) return null;
 
     const address = order.clientInfo.address;
     const formattedAddress = address ? `${address.street || ''}, ${address.number || ''} - ${address.neighborhood || ''}`.trim().replace(/, -$/, '') : 'Retirada no local';
@@ -118,10 +112,30 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
     );
 }
 
+function KdsSkeleton() {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-w-max">
+            {Object.keys(statusConfig).map(status => (
+                <div key={status} className="bg-muted/40 dark:bg-muted/50 rounded-lg p-4 w-[350px]">
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                        <Skeleton className="w-3 h-3 rounded-full" />
+                        <Skeleton className="h-6 w-32" />
+                        <Skeleton className="h-6 w-8" />
+                    </h2>
+                    <div className="space-y-4">
+                        <Skeleton className="h-48 w-full rounded-lg" />
+                        <Skeleton className="h-48 w-full rounded-lg" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
+}
+
 export default function DashboardPage() {
     const { toast } = useToast();
     const [orders, setOrders] = useState<Order[]>([]);
-    const [isStoreOpen, setIsStoreOpen] = useState<boolean>(false);
+    const [isStoreOpen, setIsStoreOpen] = useState<boolean | undefined>(undefined);
     const [isLoading, setIsLoading] = useState<true | false>(true);
     const [isSwitching, startTransition] = useTransition();
 
@@ -136,7 +150,7 @@ export default function DashboardPage() {
                 const ordersData = await getOrders();
                 setOrders(ordersData);
             } else {
-                setOrders([]); // Clear orders if store is closed
+                setOrders([]);
             }
         } catch (error) {
             console.error(error);
@@ -148,6 +162,8 @@ export default function DashboardPage() {
 
     useEffect(() => {
         fetchDashboardData();
+        const intervalId = setInterval(fetchDashboardData, 30000); // Auto-refresh every 30 seconds
+        return () => clearInterval(intervalId);
     }, []);
 
     const handleToggleStore = async (isOpen: boolean) => {
@@ -155,7 +171,7 @@ export default function DashboardPage() {
             const result = await toggleStoreStatus(isOpen);
             if (result.success) {
                 toast({ title: `Loja ${isOpen ? 'Aberta' : 'Fechada'}!`, description: isOpen ? 'Prontos para receber novos pedidos.' : 'Novos pedidos estão pausados.' });
-                await fetchDashboardData(); // Refresh data
+                await fetchDashboardData();
             } else {
                 toast({ variant: 'destructive', title: 'Erro', description: result.error });
             }
@@ -164,9 +180,8 @@ export default function DashboardPage() {
     
     const handleStatusChange = async (id: string, newStatus: Order['status']) => {
         
-        // Optimistic UI update
         const originalOrders = [...orders];
-        const updatedOrders = orders.map(o => o.id === id ? { ...o, status: newStatus } : o);
+        const updatedOrders = orders.filter(o => o.id !== id);
         setOrders(updatedOrders);
         
         const result = await updateOrderStatus(id, newStatus);
@@ -175,7 +190,7 @@ export default function DashboardPage() {
             toast({ title: 'Status atualizado!', description: `Pedido movido para "${newStatus}".` });
         } else {
             toast({ variant: 'destructive', title: 'Erro!', description: 'Não foi possível atualizar o status do pedido.'});
-            setOrders(originalOrders); // Revert on failure
+            setOrders(originalOrders);
         }
     };
 
@@ -184,7 +199,6 @@ export default function DashboardPage() {
         Recebido: orders.filter(o => o.status === 'Recebido'),
         'Em Preparo': orders.filter(o => o.status === 'Em Preparo'),
         'Pronto para Entrega': orders.filter(o => o.status === 'Pronto para Entrega'),
-        Finalizado: orders.filter(o => o.status === 'Finalizado'),
     };
     
     const statusKeys = Object.keys(statusConfig) as (keyof typeof statusConfig)[];
@@ -193,7 +207,13 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-col min-h-full bg-muted/20 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
             <header className="bg-background dark:bg-card shadow-sm p-4 sticky top-0 z-20 flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Painel de Pedidos - KDS</h1>
+                <h1 className="text-2xl font-bold">Painel da Loja - KDS</h1>
+                 {isStoreOpen === undefined ? (
+                    <div className="flex items-center space-x-2">
+                        <Skeleton className="h-6 w-24" />
+                        <Skeleton className="h-6 w-11" />
+                    </div>
+                ) : (
                 <div className="flex items-center space-x-2">
                     <Label htmlFor="store-status-switch" className={cn(
                         "font-semibold transition-colors",
@@ -209,11 +229,12 @@ export default function DashboardPage() {
                         aria-readonly={isSwitching || isLoading}
                     />
                 </div>
+                 )}
             </header>
             
             <main className="flex-1 p-4 overflow-x-auto">
                  {isLoading ? (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">Carregando painel...</div>
+                    <KdsSkeleton />
                 ) : !isStoreOpen ? (
                      <div className="flex items-center justify-center h-full text-center">
                          <div className="bg-background p-8 rounded-lg shadow-md">
@@ -222,7 +243,7 @@ export default function DashboardPage() {
                         </div>
                      </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-w-max">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-w-max">
                         {statusKeys.map(status => (
                             <div key={status} className="bg-muted/40 dark:bg-muted/50 rounded-lg p-4 w-[350px]">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -232,10 +253,11 @@ export default function DashboardPage() {
                                 </h2>
                                 <AnimatePresence>
                                 <div className="space-y-4">
-                                    {(ordersByStatus[status] || []).map(order => (
-                                        <OrderCard key={order.id} order={order} onStatusChange={handleStatusChange} />
-                                    ))}
-                                    {(ordersByStatus[status] || []).length === 0 && (
+                                    {(ordersByStatus[status] || []).length > 0 ? (
+                                        ordersByStatus[status].map(order => (
+                                            <OrderCard key={order.id} order={order} onStatusChange={handleStatusChange} />
+                                        ))
+                                    ) : (
                                         <div className="text-sm text-muted-foreground text-center py-8 px-4 rounded-lg border-2 border-dashed">
                                             Nenhum pedido aqui.
                                         </div>

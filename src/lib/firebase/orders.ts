@@ -5,6 +5,8 @@ import { db } from './admin';
 import { Order } from '../types';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getStoreStatus } from './store';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export async function createOrder(order: Omit<Order, 'id'>): Promise<string> {
     const { clientInfo } = order;
@@ -53,7 +55,7 @@ export async function getOrders(): Promise<Order[]> {
                 updatedAt: (data.updatedAt as Timestamp).toDate(),
             } as Order
         })
-        .filter(order => order.status !== 'Cancelado'); // Filter out cancelled orders from the main view
+        .filter(order => order.status !== 'Cancelado' && order.status !== 'Finalizado');
 }
 
 
@@ -68,4 +70,40 @@ export async function updateOrderStatus(id: string, status: Order['status']): Pr
         console.error(`Error updating order status for ${id}:`, error);
         return { success: false, error: "Failed to update order status." };
     }
+}
+
+export type GroupedOrders = {
+    [date: string]: Order[];
+};
+
+export async function getClosedOrdersGroupedByDate(): Promise<GroupedOrders> {
+    const snapshot = await db.collection('orders')
+        .where('status', 'in', ['Finalizado', 'Cancelado'])
+        .orderBy('createdAt', 'desc')
+        .get();
+
+    if (snapshot.empty) {
+        return {};
+    }
+
+    const groupedOrders: GroupedOrders = {};
+
+    snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const order = {
+            id: doc.id,
+            ...data,
+            createdAt: (data.createdAt as Timestamp).toDate(),
+            updatedAt: (data.updatedAt as Timestamp).toDate(),
+        } as Order;
+
+        const dateKey = format(order.createdAt, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+        
+        if (!groupedOrders[dateKey]) {
+            groupedOrders[dateKey] = [];
+        }
+        groupedOrders[dateKey].push(order);
+    });
+
+    return groupedOrders;
 }
