@@ -21,7 +21,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
  }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const isLoading = messages[messages.length - 1]?.role !== 'user' && messages.length > 0;
+  
+  const lastMessage = messages[messages.length - 1];
+  const isAiThinking = (lastMessage?.role === 'user' && !lastMessage.content.startsWith('Adicionado:')) || (messages.length > 0 && lastMessage?.role !== 'ai' && lastMessage?.role !== 'user');
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -31,7 +33,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
         behavior: 'smooth',
       });
     }
-  }, [messages, isLoading]);
+  }, [messages, isAiThinking]);
 
   return (
     <ScrollArea className="flex-1" viewportRef={viewportRef}>
@@ -47,7 +49,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             />
           ))}
         </AnimatePresence>
-        {isLoading && !messages.some(m => m.isConfirmation) && <ChatBubbleSkeleton />}
+        {isAiThinking && <ChatBubbleSkeleton />}
       </div>
     </ScrollArea>
   );

@@ -77,7 +77,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const hasOnlyCompactCards = message.components && message.components.length > 0 && message.components.every(c => c.type === 'productCard');
 
   // Do not render user messages that are just placeholders for an action
-  if (isUser && message.content.startsWith('O usuário adicionou o item')) {
+  if (isUser && message.content.startsWith('Adicionado:')) {
     return null;
   }
 

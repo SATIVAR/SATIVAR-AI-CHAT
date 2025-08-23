@@ -109,7 +109,7 @@ export default function Home() {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
   }
 
-  const handleSendMessage = useCallback(async (text: string) => {
+  const handleSendMessage = useCallback(async (text: string, stateOverride?: ConversationState) => {
     if (!text.trim() || isLoading || !client) return;
 
     const userMessage: Message = {
@@ -124,12 +124,12 @@ export default function Home() {
     setIsLoading(true);
 
     // State machine logic
-    let nextState: ConversationState = conversationState;
-    if (text.toLowerCase().includes('cardápio')) {
+    let nextState: ConversationState = stateOverride || conversationState;
+    if (text.toLowerCase().includes('cardápio') || text.toLowerCase().includes('outra categoria')) {
         nextState = 'MostrandoCategorias';
     } else if (text.toLowerCase().includes('finalizar')) {
         nextState = 'RevisandoPedido';
-    } else if (menuRef.current?.categories.some(c => c.name.toLowerCase() === text.toLowerCase())) {
+    } else if (menuRef.current?.categories.some(c => c.name.toLowerCase() === text.toLowerCase() || `ver ${c.name.toLowerCase()}` === text.toLowerCase())) {
         nextState = 'MostrandoProdutos';
     }
     setConversationState(nextState);
@@ -181,20 +181,10 @@ export default function Home() {
     }
     updateOrder(updatedOrder);
 
-    // Change state to trigger upsell/cross-sell
-    setConversationState('ItemAdicionado');
-    // We don't send a message to the AI here anymore. The UI confirms the addition.
-    const confirmationMessage: Message = {
-        id: `confirm-${productId}-${Date.now()}`,
-        role: 'ai',
-        isConfirmation: true,
-        content: `${product.name} adicionado ao carrinho!`,
-        timestamp: new Date(),
-    };
-    updateChatHistory([...messages, confirmationMessage]);
+    // After adding, immediately ask the AI what's next
+    handleSendMessage(`Adicionado: ${product.name}`, 'ItemAdicionado');
 
-
-  }, [order, client, messages]);
+  }, [order, client, messages, handleSendMessage]);
 
   const handleSubmitOrder = async (data: UserDetails) => {
     setIsLoading(true);
@@ -312,5 +302,3 @@ export default function Home() {
     />
   );
 }
-
-    
