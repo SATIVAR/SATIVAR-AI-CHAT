@@ -71,7 +71,7 @@ export async function getProducts(options: { categoryId?: string; page?: number;
     query = query.where('categoryId', '==', categoryId);
   }
 
-  const snapshot = await query.orderBy('name').get();
+  const snapshot = await query.get();
 
   let products: Product[] = snapshot.docs.map(doc => {
     const data = doc.data();
@@ -82,6 +82,9 @@ export async function getProducts(options: { categoryId?: string; page?: number;
       updatedAt: toSerializableDate(data.updatedAt),
     } as Product;
   });
+
+  // Sort in-memory to avoid composite indexes
+  products.sort((a, b) => a.name.localeCompare(b.name));
 
   const totalProducts = products.length;
   const paginatedProducts = products.slice((page - 1) * limit, page * limit);
