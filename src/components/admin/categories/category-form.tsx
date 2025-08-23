@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -13,6 +12,7 @@ import { ProductCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import Image from 'next/image';
 
 const formSchema = z.object({
     id: z.string().optional(),
@@ -20,6 +20,7 @@ const formSchema = z.object({
     description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
     order: z.coerce.number().min(0, 'A ordem deve ser um número positivo.'),
     imageUrl: z.string().url().optional().or(z.literal('')),
+    imageFile: z.instanceof(File).optional(),
 });
 
 type CategoryFormValues = z.infer<typeof formSchema>;
@@ -28,12 +29,13 @@ interface CategoryFormProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     category?: Partial<ProductCategory> | null;
-    onSave: (data: Partial<ProductCategory>) => Promise<{ success: boolean, error?: string }>;
+    onSave: (data: FormData) => Promise<{ success: boolean, error?: string }>;
 }
 
 export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: CategoryFormProps) {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const [preview, setPreview] = useState<string | null>(null);
     
     const form = useForm<CategoryFormValues>({
         resolver: zodResolver(formSchema),
@@ -53,14 +55,31 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
                 description: '',
                 order: 0,
                 imageUrl: '',
+                imageFile: undefined,
                 ...category
             });
+            setPreview(category?.imageUrl || null);
         }
     }, [isOpen, category, form]);
 
     const handleSubmit = async (values: CategoryFormValues) => {
         setIsLoading(true);
-        const result = await onSave(values);
+
+        const formData = new FormData();
+        Object.entries(values).forEach(([key, value]) => {
+            if (value !== null && value !== undefined) {
+                if (value instanceof File) {
+                    formData.append(key, value);
+                } else if (typeof value === 'object' && !(value instanceof File)) {
+                    // Skip objects that are not files, like `category`
+                }
+                else {
+                    formData.append(key, String(value));
+                }
+            }
+        });
+
+        const result = await onSave(formData);
         setIsLoading(false);
 
         if (result.success) {
@@ -72,6 +91,18 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
                 title: 'Erro ao Salvar',
                 description: result.error || 'Ocorreu um erro desconhecido.',
             });
+        }
+    };
+    
+     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            form.setValue('imageFile', file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -122,8 +153,21 @@ export default function CategoryForm({ isOpen, setIsOpen, category, onSave }: Ca
 
                          <div className="space-y-2">
                             <FormLabel>Imagem da Categoria</FormLabel>
-                            <Input type="file" className="text-sm file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5" />
+                             {preview && (
+                                <div className="mt-2 w-full aspect-video relative rounded-md overflow-hidden border">
+                                    <Image src={preview} alt="Pré-visualização" fill className="object-cover"/>
+                                </div>
+                            )}
+                            <FormControl>
+                                <Input 
+                                    type="file" 
+                                    accept="image/png, image/jpeg, image/webp"
+                                    onChange={handleFileChange}
+                                    className="text-sm file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5" 
+                                />
+                            </FormControl>
                             <p className="text-xs text-muted-foreground">Selecione uma imagem para a categoria.</p>
+                            <FormMessage>{form.formState.errors.imageFile?.message}</FormMessage>
                         </div>
                         
                         <SheetFooter className="pt-6">

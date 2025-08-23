@@ -22,7 +22,7 @@ import CategoryForm from './category-form';
 
 interface DataTableProps<TData extends ProductCategory, TValue> {
     data: TData[];
-    onSave: (data: Partial<TData>) => Promise<{ success: boolean, error?: string }>;
+    onSave: (data: FormData) => Promise<{ success: boolean, error?: string }>;
     onDelete: (id: string) => Promise<{ success: boolean, error?: string }>;
 }
 
@@ -43,7 +43,7 @@ export function CategoriesDataTable<TData extends ProductCategory, TValue>({
             cell: ({ row }) => {
                 const imageUrl = row.original.imageUrl;
                 return (
-                    <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                    <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center overflow-hidden border">
                         {imageUrl ? (
                             <Image src={imageUrl} alt={row.original.name} width={48} height={48} className="object-cover w-full h-full" />
                         ) : (
