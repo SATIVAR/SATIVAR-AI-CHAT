@@ -3,7 +3,8 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
+import AdminPanelLayout from '@/components/admin/admin-layout';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -17,10 +18,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const session = localStorage.getItem('utopizap-admin-session');
     
     if (!session && !isPublicPage) {
-      // Se NÃO há sessão E o usuário NÃO está na página de login, redirecione
       router.push('/admin');
     } else {
-      // Se há sessão ou se é a página pública, permite a renderização
       setIsVerified(true);
     }
   }, [pathname, router, isPublicPage]);
@@ -29,12 +28,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isPublicPage && !isVerified) {
     return null; 
   }
+  
+  if (isPublicPage) {
+    return (
+        <>
+            {children}
+            <Toaster />
+        </>
+    )
+  }
 
   // Renderiza o conteúdo para a página pública ou para páginas protegidas após a verificação.
   return (
-    <>
-      {children}
-      <Toaster />
-    </>
+    <AdminPanelLayout>
+        {children}
+        <Toaster />
+    </AdminPanelLayout>
   );
 }

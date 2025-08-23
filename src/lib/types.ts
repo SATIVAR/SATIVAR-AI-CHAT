@@ -96,6 +96,7 @@ export interface Client {
         zipCode?: string;
         reference?: string;
     };
+    isActive?: boolean;
     createdAt: Date | Timestamp;
     lastOrderAt: Date | Timestamp;
 }

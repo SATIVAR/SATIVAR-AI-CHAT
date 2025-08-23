@@ -3,7 +3,7 @@
 
 import { generateAIPersona } from '@/ai/flows/generate-ai-persona';
 import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide-ordering-with-ai';
-import { findClientByPhone, createClient } from '@/lib/firebase/clients';
+import { findClientByPhone, createClient as createClientInDb } from '@/lib/firebase/clients';
 import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
 import { createOrder } from '@/lib/firebase/orders';
 import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client } from '@/lib/types';
@@ -12,18 +12,26 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 
 function serializeClient(client: Client): Client {
-    const serializeTimestamp = (timestamp: any) => {
+    const serializeTimestamp = (timestamp: any): Date => {
         if (timestamp instanceof Timestamp) {
             return timestamp.toDate();
         }
-        return timestamp;
+        if (timestamp.toDate) { // Handle client-side timestamp objects
+            return timestamp.toDate();
+        }
+        return new Date(timestamp);
     };
 
-    return {
-        ...client,
-        createdAt: serializeTimestamp(client.createdAt),
-        lastOrderAt: serializeTimestamp(client.lastOrderAt),
-    };
+    const clientData: any = { ...client };
+
+    if (clientData.createdAt) {
+        clientData.createdAt = serializeTimestamp(clientData.createdAt);
+    }
+    if (clientData.lastOrderAt) {
+        clientData.lastOrderAt = serializeTimestamp(clientData.lastOrderAt);
+    }
+
+    return clientData as Client;
 }
 
 
@@ -37,16 +45,21 @@ export async function findOrCreateClient(data: UserDetails): Promise<Client> {
     }
 
     console.log("Cliente não encontrado, criando novo...");
-    const newClientData: Omit<Client, 'id'> = {
+    const newClientData: Partial<Client> = {
         ...data,
-        createdAt: Timestamp.now(),
-        lastOrderAt: Timestamp.now(),
+        createdAt: Timestamp.now() as any, // Cast to any to avoid type mismatch
+        lastOrderAt: Timestamp.now() as any,
     };
-    const newClientId = await createClient(newClientData);
-    console.log("Novo cliente criado com ID:", newClientId);
+    const { success, id } = await createClientInDb(newClientData);
+    
+    if (!success || !id) {
+        throw new Error("Failed to create client in DB");
+    }
 
-    const clientWithId = { ...newClientData, id: newClientId };
-    return serializeClient(clientWithId);
+    console.log("Novo cliente criado com ID:", id);
+
+    const clientWithId = { ...newClientData, id: id };
+    return serializeClient(clientWithId as Client);
 }
 
 
