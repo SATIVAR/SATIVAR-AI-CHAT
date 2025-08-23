@@ -34,9 +34,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   userDetails
 }) => {
   return (
-    <div className="flex h-[100dvh] w-full items-center justify-center bg-secondary p-4">
-        <div className="flex h-full w-full max-w-2xl flex-col rounded-2xl border bg-card shadow-2xl">
-            <header className="relative flex items-center gap-4 border-b p-4">
+    <div className="relative flex h-[100dvh] w-full flex-col items-center justify-center bg-secondary dark:bg-muted/40">
+        <div className="absolute inset-0 bg-[url('/whatsapp-pattern.png')] bg-repeat opacity-5 dark:opacity-100" />
+        <div className="z-10 flex h-full w-full max-w-2xl flex-col rounded-none border-0 bg-transparent shadow-2xl md:h-[95vh] md:rounded-2xl md:border md:bg-card/80 md:backdrop-blur-sm">
+            <header className="relative flex items-center gap-4 border-b bg-secondary/50 p-4 dark:bg-card">
                 <div className="relative flex-shrink-0">
                     <Logo className="h-12 w-12 text-primary" />
                     <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-card bg-green-500" />
@@ -49,6 +50,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-green-500 [animation-delay:-0.3s]"></span>
                                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-green-500 [animation-delay:-0.15s]"></span>
                                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-green-500"></span>
+
                                 <span className="ml-1">digitando...</span>
                             </span>
                         ) : "online"}
@@ -68,7 +70,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                 onUpdateOrder={onUpdateOrder}
             />
             
-            <footer className="w-full border-t bg-card p-4">
+            <footer className="w-full border-t border-border/80 bg-secondary/50 p-4 dark:bg-card">
                  {isAwaitingOrderDetails ? (
                     <UserDetailsForm 
                         onSubmit={onSubmitOrder} 

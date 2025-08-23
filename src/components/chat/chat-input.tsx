@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SendHorizonal, CornerDownLeft } from 'lucide-react';
+import { SendHorizonal } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 
@@ -37,7 +37,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
           }
         }}
         disabled={isLoading}
-        className="flex-1 pr-14 h-12 rounded-full bg-secondary focus:bg-background border-transparent focus-visible:ring-primary focus-visible:ring-2"
+        className="flex-1 pr-14 h-12 rounded-full bg-background dark:bg-secondary/40 focus:bg-background border-border/60 focus-visible:ring-primary focus-visible:ring-2 shadow-sm"
         autoComplete="off"
       />
       <AnimatePresence>
@@ -47,9 +47,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="absolute right-2.5 flex items-center"
+            className="absolute right-1.5 flex items-center"
           >
-            <Button type="submit" size="icon" className="rounded-full w-9 h-9" disabled={isLoading || !inputText.trim()}>
+            <Button type="submit" size="icon" className="rounded-full w-9 h-9 bg-primary hover:bg-primary/90" disabled={isLoading || !inputText.trim()}>
               <SendHorizonal size={18} />
               <span className="sr-only">Enviar</span>
             </Button>

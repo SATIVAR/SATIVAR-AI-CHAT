@@ -1,19 +1,22 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Message, OrderItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
 
 import ProductCard from '../dynamic/product-card';
 import QuickReplyButton from '../dynamic/quick-reply-button';
 import OrderSummaryCard from '../dynamic/order-summary-card';
 import { Bot, User } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Logo } from '../icons/logo';
+import CompactProductCard from '../dynamic/compact-product-card';
 
 interface MessageBubbleProps {
   message: Message;
@@ -33,24 +36,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   isLast
  }) => {
   const isUser = message.role === 'user';
-  
-  const bubbleClasses = cn(
-    "flex w-full max-w-md flex-col gap-2",
-    isUser ? "ml-auto items-end" : "mr-auto items-start",
-    message.isConfirmation ? "mx-auto w-auto max-w-none items-center" : "items-start gap-3 md:gap-4",
-    isUser ? "flex-row-reverse" : "flex-row"
-  );
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState('');
 
+  const handleImageClick = (imageUrl: string) => {
+    setLightboxImage(imageUrl);
+    setLightboxOpen(true);
+  };
+  
   const contentClasses = cn(
-    "relative rounded-2xl px-4 py-3 text-sm md:text-base shadow-sm",
+    "relative rounded-lg px-3 py-2 text-sm md:text-base shadow-md max-w-full",
     isUser
-      ? "rounded-br-lg bg-primary text-primary-foreground"
-      : "rounded-bl-lg bg-secondary text-secondary-foreground",
+      ? "bg-[#E7FFDB] dark:bg-primary/60 text-gray-800 dark:text-primary-foreground"
+      : "bg-background text-foreground",
     message.isConfirmation ? "bg-accent/80 text-accent-foreground text-xs text-center font-medium" : ""
   );
 
   const variants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
     exit: { opacity: 0, transition: { duration: 0.1, ease: "easeIn" } }
   };
@@ -71,52 +74,69 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             exit="exit"
             layout
         >
-            <p className="rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary">{message.content}</p>
+            <p className="rounded-full bg-blue-100 dark:bg-primary/20 px-4 py-1.5 text-xs font-semibold text-blue-800 dark:text-primary-foreground/80">{message.content}</p>
         </motion.div>
      )
   }
 
-  return (
-    <motion.div 
-        className={bubbleClasses}
-        variants={variants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        layout
-    >
-      <Avatar className="h-8 w-8 md:h-10 md:w-10 shadow-sm flex-shrink-0">
-          <AvatarImage src={isUser ? undefined : '/logo.svg'} />
-          <AvatarFallback className={cn(isUser ? 'bg-primary/20 text-primary' : 'bg-secondary-foreground/10 text-secondary-foreground')}>
-              {isUser ? <User size={18} /> : <Bot size={18} />}
-          </AvatarFallback>
-      </Avatar>
+  const hasOnlyCompactCards = message.components && message.components.length > 0 && message.components.every(c => c.type === 'productCard');
 
-      <div className="flex flex-col gap-1.5 max-w-[85%]">
-          <div className={cn(contentClasses, "flex flex-col gap-3")}>
-              {message.content && <p className="whitespace-pre-wrap">{message.content}</p>}
-              {message.components && (
-                  <div className="mt-2 flex w-full flex-col gap-3">
-                      {message.components.map((component, index) => {
-                          switch (component.type) {
-                              case 'productCard':
-                                  return <ProductCard key={index} data={component} onAddToOrder={onAddToOrder} />;
-                              case 'quickReplyButton':
-                                  return <QuickReplyButton key={index} data={component} onSendMessage={onSendMessage} />;
-                              case 'orderSummaryCard':
-                                  return <OrderSummaryCard key={index} order={order} onUpdateOrder={onUpdateOrder} />;
-                              default:
-                                  return null;
-                          }
-                      })}
-                  </div>
-              )}
+  return (
+    <>
+      <motion.div 
+          className={cn("flex w-full max-w-md flex-col gap-1", isUser ? "ml-auto items-end" : "mr-auto items-start")}
+          variants={variants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          layout
+      >
+        <div className={cn(
+          "flex items-end gap-2",
+          isUser ? "flex-row-reverse" : "flex-row"
+        )}>
+          {!isUser && (
+            <Avatar className="h-8 w-8 md:h-9 md:w-9 shadow-sm flex-shrink-0 mb-4">
+                <AvatarFallback className={'bg-primary/20 text-primary'}>
+                    <Bot size={20} />
+                </AvatarFallback>
+            </Avatar>
+          )}
+
+          <div className={cn("flex flex-col gap-1.5", isUser ? 'items-end' : 'items-start', hasOnlyCompactCards ? 'w-full' : '')}>
+              <div className={cn(contentClasses, "flex flex-col gap-3", hasOnlyCompactCards ? 'bg-transparent dark:bg-transparent p-0 shadow-none' : '')}>
+                  {message.content && <p className="whitespace-pre-wrap">{message.content}</p>}
+                  
+                  {message.components && (
+                      <div className={cn("mt-1 flex w-full flex-col gap-2", hasOnlyCompactCards ? 'gap-1' : 'gap-3')}>
+                          {message.components.map((component, index) => {
+                              switch (component.type) {
+                                  case 'productCard':
+                                      return <CompactProductCard key={index} data={component} onAddToOrder={onAddToOrder} onImageClick={handleImageClick} />;
+                                  case 'quickReplyButton':
+                                      return <QuickReplyButton key={index} data={component} onSendMessage={onSendMessage} />;
+                                  case 'orderSummaryCard':
+                                      return <OrderSummaryCard key={index} order={order} onUpdateOrder={onUpdateOrder} />;
+                                  default:
+                                      return null;
+                              }
+                          })}
+                      </div>
+                  )}
+              </div>
+              <span className={cn("text-xs text-muted-foreground/80", isUser ? 'text-right' : 'text-left', hasOnlyCompactCards ? 'hidden' : '')}>
+                  {format(new Date(message.timestamp), 'HH:mm', { locale: ptBR })}
+              </span>
           </div>
-          <span className={cn("text-xs text-muted-foreground", isUser ? 'text-right' : 'text-left')}>
-              {format(new Date(message.timestamp), 'HH:mm', { locale: ptBR })}
-          </span>
-      </div>
-    </motion.div>
+        </div>
+      </motion.div>
+      <Lightbox
+        open={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        slides={[{ src: lightboxImage }]}
+        styles={{ container: { backgroundColor: "rgba(0, 0, 0, .8)" } }}
+      />
+    </>
   );
 };
 

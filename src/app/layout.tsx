@@ -1,6 +1,6 @@
 
 import type {Metadata} from 'next';
-import { Inter as FontSans } from "next/font/google"
+import { PT_Sans as FontSans } from "next/font/google"
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 
 const fontSans = FontSans({
   subsets: ["latin"],
+  weight: ['400', '700'],
   variable: "--font-sans",
 })
 
@@ -29,8 +30,8 @@ export default function RootLayout({
         )}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           {children}
