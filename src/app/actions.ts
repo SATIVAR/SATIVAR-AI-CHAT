@@ -3,14 +3,39 @@
 
 import { generateAIPersona } from '@/ai/flows/generate-ai-persona';
 import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide-ordering-with-ai';
+import { findClientByPhone, createClient } from '@/lib/firebase/clients';
 import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
 import { createOrder } from '@/lib/firebase/orders';
-import { DynamicComponentData, Message, Order, OrderItem, UserDetails } from '@/lib/types';
+import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
 import { Timestamp } from 'firebase/firestore';
 
-export async function getInitialGreeting(): Promise<string> {
-  // This could be cached as well if the persona greeting doesn't need to be unique every single time.
+
+export async function findOrCreateClient(data: UserDetails): Promise<Client> {
+    console.log(`Buscando ou criando cliente com telefone: ${data.phone}`);
+    const existingClient = await findClientByPhone(data.phone);
+
+    if (existingClient) {
+        console.log("Cliente encontrado:", existingClient.id);
+        return existingClient;
+    }
+
+    console.log("Cliente não encontrado, criando novo...");
+    const newClientData: Omit<Client, 'id'> = {
+        ...data,
+        createdAt: Timestamp.now(),
+        lastOrderAt: Timestamp.now(),
+    };
+    const newClientId = await createClient(newClientData);
+    console.log("Novo cliente criado com ID:", newClientId);
+    return { ...newClientData, id: newClientId };
+}
+
+
+export async function getInitialGreeting(clientName?: string): Promise<string> {
+    if (clientName) {
+        return `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! O que vamos pedir hoje?`;
+    }
   const persona = await generateAIPersona({});
   return persona.greeting;
 }
@@ -65,7 +90,8 @@ function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput[
 
 export async function getAiResponse(
   history: Message[],
-  currentOrder: OrderItem[]
+  currentOrder: OrderItem[],
+  client: Client
 ): Promise<{ text: string; components?: DynamicComponentData[] }> {
     
   const knowledgeBase = await getKnowledgeBase();
@@ -76,6 +102,7 @@ export async function getAiResponse(
       history: aiHistory,
       menu: knowledgeBase,
       currentOrder: currentOrder,
+      client: client,
   });
   
   const components = mapAiComponentsToAppComponents(response.components || []);
@@ -88,7 +115,7 @@ export async function submitOrder(customer: UserDetails, orderItems: OrderItem[]
   
   const total = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  const newOrder: Order = {
+  const newOrder: Omit<Order, 'id'> = {
     clientInfo: customer,
     items: orderItems.map(item => ({
       productId: item.id,

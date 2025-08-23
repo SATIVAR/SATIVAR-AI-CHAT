@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { Message, OrderItem, UserDetails } from '@/lib/types';
+import { Message, OrderItem, UserDetails, Client } from '@/lib/types';
 import ChatMessages from './chat-messages';
 import ChatInput from './chat-input';
 import { Logo } from '@/components/icons/logo';
@@ -17,9 +17,9 @@ interface ChatLayoutProps {
   isAwaitingOrderDetails: boolean;
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
-  onSubmitOrder: (data: { name: string; phone: string }) => void;
+  onSubmitOrder: (data: UserDetails) => void;
   onUpdateOrder: (productId: string, quantity: number) => void;
-  userDetails: UserDetails | null;
+  userDetails: Client | null;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({

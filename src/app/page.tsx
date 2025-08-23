@@ -3,8 +3,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ChatLayout from '@/components/chat/chat-layout';
-import { Message, OrderItem, UserDetails, Menu } from '@/lib/types';
-import { getInitialGreeting, getAiResponse, submitOrder, getKnowledgeBase } from './actions';
+import { Message, OrderItem, UserDetails, Menu, Client } from '@/lib/types';
+import { getInitialGreeting, getAiResponse, submitOrder, getKnowledgeBase, findOrCreateClient } from './actions';
+import WelcomeScreen from '@/components/welcome-screen';
 
 
 const USER_DETAILS_KEY = 'utopizap_user_details';
@@ -15,45 +16,65 @@ export default function Home() {
   const [order, setOrder] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAwaitingOrderDetails, setIsAwaitingOrderDetails] = useState(false);
-  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  
+  const [client, setClient] = useState<Client | null>(null);
+  
   const menuRef = useRef<Menu | null>(null);
 
-  // Effect to load menu and user data
   useEffect(() => {
-    // Fetch menu
-    getKnowledgeBase().then(menu => {
-      menuRef.current = menu;
-    });
+    getKnowledgeBase().then(menu => menuRef.current = menu);
 
     try {
-      const storedUserDetails = localStorage.getItem(USER_DETAILS_KEY);
-      if (storedUserDetails) {
-        setUserDetails(JSON.parse(storedUserDetails));
-      }
-      
-      const storedChatHistory = localStorage.getItem(CHAT_HISTORY_KEY);
-      if (storedChatHistory) {
-        const parsedMessages = JSON.parse(storedChatHistory).map((msg: Message) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        }));
-        setMessages(parsedMessages);
-        setIsLoading(false);
-      } else {
-        fetchGreeting();
+      const storedClient = localStorage.getItem(USER_DETAILS_KEY);
+      if (storedClient) {
+        const parsedClient: Client = JSON.parse(storedClient);
+        setClient(parsedClient);
+        
+        const storedChatHistory = localStorage.getItem(CHAT_HISTORY_KEY);
+        if (storedChatHistory) {
+          const parsedMessages: Message[] = JSON.parse(storedChatHistory).map((msg: Message) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }));
+          setMessages(parsedMessages);
+        } else {
+          fetchGreeting(parsedClient.name);
+        }
       }
     } catch (error) {
       console.error("Error reading from localStorage:", error);
       localStorage.removeItem(CHAT_HISTORY_KEY);
       localStorage.removeItem(USER_DETAILS_KEY);
-      fetchGreeting();
+    } finally {
+      setIsLoading(false);
     }
   }, []);
-  
-  const fetchGreeting = async () => {
+
+  const handleLogin = async (data: UserDetails) => {
     setIsLoading(true);
     try {
-      const greeting = await getInitialGreeting();
+      const clientData = await findOrCreateClient(data);
+      setClient(clientData);
+      localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(clientData));
+      await fetchGreeting(clientData.name);
+    } catch (error) {
+      console.error("Failed to login/register client:", error);
+       const errorMessage: Message = {
+        id: 'error-login',
+        role: 'ai',
+        content: "Tivemos um problema para verificar seus dados. Por favor, tente novamente.",
+        timestamp: new Date(),
+      };
+      setMessages([errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchGreeting = async (clientName?: string) => {
+    setIsLoading(true);
+    try {
+      const greeting = await getInitialGreeting(clientName);
       const initialMessage: Message = {
         id: 'ai-greeting',
         role: 'ai',
@@ -82,7 +103,7 @@ export default function Home() {
   }
 
   const handleSendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || isLoading || !client) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -96,7 +117,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const res = await getAiResponse(newMessages, order);
+      const res = await getAiResponse(newMessages, order, client);
       
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -123,19 +144,19 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, order, isLoading]);
+  }, [messages, order, isLoading, client]);
 
   const handleAddToOrder = useCallback((productId: string) => {
-    if (!menuRef.current) return;
+    if (!menuRef.current || !client) return;
     const product = menuRef.current.items.find(item => item.id === productId);
     if (!product) return;
   
-    let updatedOrder;
+    let updatedOrder: OrderItem[];
     setOrder(prevOrder => {
       const existingItem = prevOrder.find(item => item.id === productId);
       if (existingItem) {
         updatedOrder = prevOrder.map(item =>
-          item.id === productId ? { ...item, quantity: item.quantity + 1, unitPrice: product.price, productName: product.name } : item
+          item.id === productId ? { ...item, quantity: item.quantity + 1 } : item
         );
       } else {
         updatedOrder = [...prevOrder, { ...product, quantity: 1, unitPrice: product.price, productName: product.name }];
@@ -158,7 +179,7 @@ export default function Home() {
 
     const tempHistoryForAI = [...newMessages, { id: 'temp-user-action', role: 'user', content: `Adicionei ${product.name} ao meu pedido.`, timestamp: new Date() }];
 
-    getAiResponse(tempHistoryForAI, updatedOrder!).then(res => {
+    getAiResponse(tempHistoryForAI, updatedOrder!, client).then(res => {
         const aiMessage: Message = {
             id: `ai-${Date.now()}`,
             role: 'ai',
@@ -173,12 +194,14 @@ export default function Home() {
         setIsLoading(false);
     });
 
-  }, [messages, order]);
+  }, [messages, order, client]);
 
   const handleSubmitOrder = async (data: UserDetails) => {
     setIsLoading(true);
-    setUserDetails(data);
-    localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(data));
+
+    const fullClientDetails: Client = { ...client!, ...data };
+    setClient(fullClientDetails);
+    localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(fullClientDetails));
     
     try {
       const result = await submitOrder(data, order);
@@ -192,12 +215,13 @@ export default function Home() {
         timestamp: new Date()
       };
       
-      updateChatHistory([finalMessage]);
+      const updatedChat = messages.filter(m => !m.components?.some(c => c.type === 'orderSummaryCard'));
+      updateChatHistory([...updatedChat, finalMessage]);
       setOrder([]);
       setIsAwaitingOrderDetails(false);
 
       setTimeout(() => {
-        fetchGreeting();
+        fetchGreeting(data.name);
       }, 8000);
 
 
@@ -223,6 +247,9 @@ export default function Home() {
     }
   };
 
+  if (!client) {
+    return <WelcomeScreen onLogin={handleLogin} isLoading={isLoading} />
+  }
 
   return (
     <ChatLayout
@@ -234,7 +261,7 @@ export default function Home() {
       onAddToOrder={handleAddToOrder}
       onSubmitOrder={handleSubmitOrder}
       onUpdateOrder={handleUpdateOrder}
-      userDetails={userDetails}
+      userDetails={client}
     />
   );
 }

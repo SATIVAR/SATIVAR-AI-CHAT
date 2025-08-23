@@ -87,5 +87,15 @@ export interface Client {
     id?: string;
     name: string;
     phone: string;
+    address?: {
+        street?: string;
+        number?: string;
+        neighborhood?: string;
+        city?: string;
+        state?: string;
+        zipCode?: string;
+        reference?: string;
+    };
+    createdAt: Date | Timestamp;
     lastOrderAt: Date | Timestamp;
 }
