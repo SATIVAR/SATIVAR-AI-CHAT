@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Utensils, Check, ChefHat } from 'lucide-react';
+import { ArrowRight, Utensils, Check, ChefHat, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -57,6 +57,10 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
     const config = statusConfig[order.status];
     if (order.status === 'Cancelado' || !config) return null;
 
+    const address = order.clientInfo.address;
+    const formattedAddress = address ? `${address.street || ''}, ${address.number || ''} - ${address.neighborhood || ''}`.trim().replace(/, -$/, '') : 'Retirada no local';
+
+
     return (
          <motion.div
             layout
@@ -66,14 +70,22 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
             className="w-full"
         >
             <Card className="shadow-md hover:shadow-lg transition-shadow bg-card w-full">
-                <CardHeader className="p-4">
-                    <CardTitle className="text-lg font-bold flex justify-between items-center">
-                        <span>{order.clientInfo.name}</span>
+                <CardHeader className="p-4 space-y-2">
+                    <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg font-bold">
+                            {order.clientInfo.name}
+                        </CardTitle>
                         <span className="text-sm font-mono text-muted-foreground">#{order.id?.slice(-5).toUpperCase()}</span>
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground pt-1">
-                        {format(createdAtDate, "HH:mm'h'", { locale: ptBR })}
-                    </p>
+                    </div>
+                     <div className="text-xs text-muted-foreground flex items-center gap-4">
+                        <span>{format(createdAtDate, "HH:mm'h'", { locale: ptBR })}</span>
+                        {address && (
+                            <span className="flex items-center gap-1.5 truncate">
+                                <MapPin size={12} />
+                                <span className="truncate">{formattedAddress}</span>
+                            </span>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent className="p-4 pt-0 space-y-2">
                     <Separator />
