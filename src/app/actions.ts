@@ -143,7 +143,7 @@ export async function getAiResponse(
       history: aiHistory,
       menu: knowledgeBase,
       currentOrder: currentOrder,
-      client: client,
+      client: JSON.stringify(client),
   });
   
   const components = mapAiComponentsToAppComponents(response.components || []);

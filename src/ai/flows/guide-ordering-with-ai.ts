@@ -35,21 +35,6 @@ const MenuSchema = z.object({
 
 export type Menu = z.infer<typeof MenuSchema>;
 
-const ClientSchema = z.object({
-  id: z.string().optional(),
-  name: z.string(),
-  phone: z.string(),
-  address: z.object({
-    street: z.string().optional(),
-    number: z.string().optional(),
-    neighborhood: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    zipCode: z.string().optional(),
-    reference: z.string().optional(),
-  }).optional(),
-}).describe('The customer data.');
-
 const GuideOrderingWithAIInputSchema = z.object({
   history: z.array(z.object({
     role: z.enum(['user', 'ai']),
@@ -62,13 +47,13 @@ const GuideOrderingWithAIInputSchema = z.object({
     quantity: z.number(),
     price: z.number(),
   })).describe('The current items in the user\'s order.'),
-  client: ClientSchema.optional().describe('The identified customer data. Use this to personalize the conversation.'),
+  client: z.string().describe('The identified customer data as a JSON string. Use this to personalize the conversation.'),
 });
 export type GuideOrderingWithAIInput = z.infer<typeof GuideOrderingWithAIInputSchema>;
 
 
 const ProductCardSchema = z.object({
-    type: z.string().describe('productCard'),
+    type: z.literal('productCard'),
     productId: z.string().describe('The unique ID of the product.'),
     imageUrl: z.string().describe('URL of the product image.'),
     name: z.string().describe('Name of the product.'),
@@ -77,13 +62,13 @@ const ProductCardSchema = z.object({
 });
   
 const QuickReplyButtonSchema = z.object({
-    type: z.string().describe('quickReplyButton'),
+    type: z.literal('quickReplyButton'),
     label: z.string().describe('Label of the quick reply button.'),
     payload: z.string().describe('Text to send to the AI when the button is clicked.'),
 });
 
 const OrderSummaryCardSchema = z.object({
-    type: z.string().describe('orderSummaryCard'),
+    type: z.literal('orderSummaryCard'),
 });
   
 const GuideOrderingWithAIOutputSchema = z.object({
@@ -171,9 +156,9 @@ REGRAS DE INTERAÇÃO:
 8.  **Personalização**: Use o nome do cliente para criar uma saudação e um tratamento mais pessoal durante a conversa.
 
 INFORMAÇÕES DISPONÍVEIS:
-*   **Dados do Cliente**: {{{JSON.stringify(client)}}}
-*   **Cardápio Completo**: {{{JSON.stringify(menu)}}}
-*   **Pedido Atual**: {{{JSON.stringify(currentOrder)}}}
+*   **Dados do Cliente**: {{{client}}}
+*   **Cardápio Completo**: {{{JSON.stringify menu}}}
+*   **Pedido Atual**: {{{JSON.stringify currentOrder}}}
 *   **Histórico da Conversa**: Abaixo, para contexto.
 
 Responda à última mensagem do usuário com base em todo o contexto fornecido.`,
