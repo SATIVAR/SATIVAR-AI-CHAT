@@ -48,6 +48,8 @@ export interface QuickReplyButtonData {
 
 export interface OrderSummaryCardData {
     type: 'orderSummaryCard';
+    summary?: string;
+    total?: number;
 }
 
 export interface OrderControlButtonsData {

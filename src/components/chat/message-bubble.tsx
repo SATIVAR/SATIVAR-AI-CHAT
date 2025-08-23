@@ -116,7 +116,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                   case 'quickReplyButton':
                                       return <QuickReplyButton key={index} data={component} onSendMessage={onSendMessage} />;
                                   case 'orderSummaryCard':
-                                      return <OrderSummaryCard key={index} />;
+                                      return <OrderSummaryCard key={index} data={component} />;
                                   case 'orderControlButtons':
                                       return <OrderControlButtons key={index} onSendMessage={onSendMessage} />;
                                   default:

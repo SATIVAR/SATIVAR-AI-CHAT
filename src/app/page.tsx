@@ -134,7 +134,7 @@ export default function Home() {
 
     // Handle cancel action from input
     if (text.toLowerCase().includes('cancelar meu pedido')) {
-        handleCancelOrder(newMessages); // Pass history to keep the user message
+        handleCancelOrder();
         setIsLoading(false);
         return;
     }
@@ -202,15 +202,19 @@ export default function Home() {
 
       if (!result.success) throw new Error("Order submission failed");
 
-      // Create a simple summary of the order
-      const orderSummaryText = submittedOrder.map(item => `${item.quantity}x ${item.productName}`).join(', ');
+      const orderSummaryText = submittedOrder.map(item => `${item.quantity}x ${item.productName}`).join('\n');
 
       const finalMessage: Message = {
         id: `final-${Date.now()}`,
         role: 'ai',
-        content: `Perfeito, ${data.name}! ✅ Seu pedido foi confirmado e já está sendo preparado.\n\n*Resumo:* ${orderSummaryText}\n\nQualquer novidade, avisaremos no número ${data.phone}. Obrigado por escolher o UTÓPICOS!`,
+        content: `Perfeito, ${data.name}! ✅ Seu pedido foi confirmado e já está sendo preparado.`,
         timestamp: new Date(),
         components: [
+          {
+            type: 'orderSummaryCard',
+            summary: orderSummaryText,
+            total: submittedOrder.reduce((acc, item) => acc + item.price * item.quantity, 0)
+          },
           { type: 'quickReplyButton', label: 'Fazer novo pedido', payload: 'Gostaria de ver o cardápio' }
         ]
       };
@@ -245,7 +249,7 @@ export default function Home() {
     updateOrder(updatedOrder);
   };
 
-  const handleCancelOrder = (currentMessages: Message[] = messages) => {
+  const handleCancelOrder = () => {
     updateOrder([]);
     localStorage.removeItem(ORDER_KEY);
     setIsAwaitingOrderDetails(false);
@@ -253,15 +257,15 @@ export default function Home() {
     const cancelConfirmationMessage: Message = {
         id: `ai-cancel-${Date.now()}`,
         role: 'ai',
-        content: 'Seu pedido foi cancelado. Se mudar de ideia, é só chamar! 👋',
+        content: 'Pedido cancelado. Se mudar de ideia, é só chamar! 👋',
         timestamp: new Date(),
         components: [
           { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
         ]
     };
     
-    // Reset chat with the cancellation message
-    updateChatHistory([...currentMessages, cancelConfirmationMessage]);
+    // Reset chat with only the cancellation message
+    updateChatHistory([cancelConfirmationMessage]);
   };
 
   if (!client) {
@@ -283,4 +287,3 @@ export default function Home() {
     />
   );
 }
-
