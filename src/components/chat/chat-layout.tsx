@@ -12,6 +12,7 @@ import { ThemeToggle } from '../theme-toggle';
 import { Button } from '../ui/button';
 import { ShoppingCart } from 'lucide-react';
 import CartModal from './cart-modal';
+import { UserMenu } from './user-menu';
 
 interface ChatLayoutProps {
   messages: Message[];
@@ -23,6 +24,7 @@ interface ChatLayoutProps {
   onSubmitOrder: (data: UserDetails) => void;
   onUpdateOrder: (productId: string, quantity: number) => void;
   onCancelOrder: () => void;
+  onUpdateClient: (data: Partial<Client>) => Promise<{success: boolean, error?: string}>;
   userDetails: Client | null;
 }
 
@@ -36,6 +38,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onSubmitOrder,
   onUpdateOrder,
   onCancelOrder,
+  onUpdateClient,
   userDetails
 }) => {
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -65,7 +68,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                         ) : "online"}
                     </p>
                 </div>
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-1">
                     <ThemeToggle />
                     <Button variant="ghost" size="icon" className="relative" onClick={() => setIsCartOpen(true)}>
                         <ShoppingCart className="h-6 w-6" />
@@ -76,6 +79,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                         )}
                         <span className="sr-only">Ver carrinho</span>
                     </Button>
+                    <UserMenu client={userDetails} onSave={onUpdateClient} />
                 </div>
             </header>
 

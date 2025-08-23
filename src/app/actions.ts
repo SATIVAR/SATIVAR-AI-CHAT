@@ -3,7 +3,7 @@
 
 import { generateAIPersona } from '@/ai/flows/generate-ai-persona';
 import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide-ordering-with-ai';
-import { findClientByPhone, createClient as createClientInDb } from '@/lib/firebase/clients';
+import { findClientByPhone, createClient as createClientInDb, updateClient as updateClientInDb } from '@/lib/firebase/clients';
 import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
 import { createOrder } from '@/lib/firebase/orders';
 import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu } from '@/lib/types';
@@ -69,6 +69,10 @@ export async function getInitialGreeting(clientName?: string): Promise<string> {
     }
   const persona = await generateAIPersona({});
   return persona.greeting;
+}
+
+export async function updateClient(id: string, data: Partial<Client>): Promise<{success: boolean, error?: string}> {
+    return updateClientInDb(id, data);
 }
 
 // "Rule of Gold": Cache the knowledge base to be read only once per session/defined interval.
