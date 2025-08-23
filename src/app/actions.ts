@@ -141,8 +141,8 @@ export async function getAiResponse(
 
   const response = await guideOrderingWithAI({
       history: aiHistory,
-      menu: knowledgeBase,
-      currentOrder: currentOrder,
+      menu: JSON.stringify(knowledgeBase),
+      currentOrder: JSON.stringify(currentOrder),
       client: JSON.stringify(client),
   });
   

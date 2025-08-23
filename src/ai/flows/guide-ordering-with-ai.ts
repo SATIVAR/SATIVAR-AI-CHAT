@@ -40,13 +40,8 @@ const GuideOrderingWithAIInputSchema = z.object({
     role: z.enum(['user', 'ai']),
     content: z.string(),
   })).describe('The conversation history.'),
-  menu: MenuSchema.describe('The restaurant menu.'),
-  currentOrder: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    quantity: z.number(),
-    price: z.number(),
-  })).describe('The current items in the user\'s order.'),
+  menu: z.string().describe('The restaurant menu as a JSON string.'),
+  currentOrder: z.string().describe('The current items in the user\'s order as a JSON string.'),
   client: z.string().describe('The identified customer data as a JSON string. Use this to personalize the conversation.'),
 });
 export type GuideOrderingWithAIInput = z.infer<typeof GuideOrderingWithAIInputSchema>;
@@ -86,14 +81,15 @@ const findUpsellAndCrossSell = ai.defineTool({
   description: 'Suggests relevant upsells and cross-sells based on the current order and the menu. This tool should be used after the customer has indicated one or more items they want to order to enrich the conversation and increase the order value.',
   inputSchema: z.object({
     orderedItemNames: z.array(z.string()).describe('Names of the items already in the order.'),
-    menu: MenuSchema.describe('The restaurant menu.'),
+    menuString: z.string().describe('The restaurant menu as a JSON string.'),
   }),
   outputSchema: z.object({
     suggestions: z.array(z.string()).describe('List of suggested upsell and cross-sell item names.'),
   }),
 },
 async (input) => {
-  const { orderedItemNames, menu } = input;
+  const { orderedItemNames, menuString } = input;
+  const menu: Menu = JSON.parse(menuString);
   const suggestions: string[] = [];
   if (orderedItemNames.length === 0) {
     return { suggestions: [] };
@@ -143,7 +139,7 @@ Sua principal função é guiar o cliente pelo processo de pedido, transformando
 REGRAS DE INTERAÇÃO:
 1.  **Controle a UI com JSON**: Sua resposta DEVE ser um objeto JSON contendo uma resposta textual ('text') e um array opcional de componentes ('components'). Esses componentes constroem a interface para o usuário.
 2.  **Análise de Intenção**: Analise a mensagem do usuário e o histórico para entender a intenção: ver o cardápio, ver uma categoria, adicionar um item, remover, perguntar algo ou finalizar o pedido.
-3.  **Sugestões Proativas (Upsell/Cross-sell)**: Use a ferramenta 'findUpsellAndCrossSell' SEMPRE que um item for adicionado ao carrinho para fazer sugestões inteligentes. Por exemplo, se adicionarem um espetinho, sugira uma guarnição e uma bebida.
+3.  **Sugestões Proativas (Upsell/Cross-sell)**: Use a ferramenta 'findUpsellAndCrossSell' SEMPRE que um item for adicionado ao carrinho para fazer sugestões inteligentes. Por exemplo, se adicionarem um espetinho, sugira uma guarnição e uma bebida. Para usar a ferramenta, você deve passar o menu como uma string JSON no parâmetro 'menuString'.
 4.  **Apresentação do Cardápio**:
     *   Nunca liste o cardápio inteiro de uma vez.
     *   Se o usuário pedir para "ver o cardápio", apresente as CATEGORIAS primeiro usando 'quickReplyButton'.
@@ -157,8 +153,8 @@ REGRAS DE INTERAÇÃO:
 
 INFORMAÇÕES DISPONÍVEIS:
 *   **Dados do Cliente**: {{{client}}}
-*   **Cardápio Completo**: {{{JSON.stringify menu}}}
-*   **Pedido Atual**: {{{JSON.stringify currentOrder}}}
+*   **Cardápio Completo**: {{{menu}}}
+*   **Pedido Atual**: {{{currentOrder}}}
 *   **Histórico da Conversa**: Abaixo, para contexto.
 
 Responda à última mensagem do usuário com base em todo o contexto fornecido.`,
