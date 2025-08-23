@@ -1,7 +1,10 @@
 
+'use server';
+
 import { db } from './admin';
 import { Order } from '../types';
 import { Timestamp } from 'firebase-admin/firestore';
+import { getStoreStatus } from './store';
 
 export async function createOrder(order: Omit<Order, 'id'>): Promise<string> {
     const { clientInfo } = order;
@@ -12,7 +15,7 @@ export async function createOrder(order: Omit<Order, 'id'>): Promise<string> {
         const clientDoc = clientQuery.docs[0];
         await clientDoc.ref.update({
             lastOrderAt: Timestamp.now(),
-            address: (order as any).clientInfo.address || clientDoc.data().address || {},
+            address: order.clientInfo.address || clientDoc.data().address || {},
             name: clientInfo.name || clientDoc.data().name,
         });
     }
@@ -23,18 +26,46 @@ export async function createOrder(order: Omit<Order, 'id'>): Promise<string> {
 
 
 export async function getOrders(): Promise<Order[]> {
-    const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').limit(50).get();
+    const storeStatus = await getStoreStatus();
+    if (!storeStatus.isOpen || !storeStatus.openedAt) {
+        return [];
+    }
+
+    const startOfDay = new Date(storeStatus.openedAt);
+
+    const snapshot = await db.collection('orders')
+        .where('createdAt', '>=', Timestamp.fromDate(startOfDay))
+        .orderBy('createdAt', 'asc') // Sort by oldest first within the day
+        .get();
+        
     if (snapshot.empty) {
         return [];
     }
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return { 
-            id: doc.id, 
-            ...data,
-            // Convert Timestamps to serializable Date objects
-            createdAt: (data.createdAt as Timestamp).toDate(),
-            updatedAt: (data.updatedAt as Timestamp).toDate(),
-        } as Order
-    });
+    
+    return snapshot.docs
+        .map(doc => {
+            const data = doc.data();
+            return { 
+                id: doc.id, 
+                ...data,
+                // Convert Timestamps to serializable Date objects
+                createdAt: (data.createdAt as Timestamp).toDate(),
+                updatedAt: (data.updatedAt as Timestamp).toDate(),
+            } as Order
+        })
+        .filter(order => order.status !== 'Cancelado'); // Filter out cancelled orders from the main view
+}
+
+
+export async function updateOrderStatus(id: string, status: Order['status']): Promise<{ success: boolean; error?: string }> {
+    try {
+        await db.collection('orders').doc(id).update({
+            status: status,
+            updatedAt: Timestamp.now(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error(`Error updating order status for ${id}:`, error);
+        return { success: false, error: "Failed to update order status." };
+    }
 }
