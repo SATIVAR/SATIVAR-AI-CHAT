@@ -11,10 +11,20 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2 } from 'lucide-react';
 import { UserDetails } from '@/lib/types';
+import { Textarea } from '../ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Por favor, insira um nome válido." }),
   phone: z.string().min(10, { message: "Por favor, insira um telefone válido com DDD." }),
+  address: z.object({
+        street: z.string().optional(),
+        number: z.string().optional(),
+        neighborhood: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zipCode: z.string().optional(),
+        reference: z.string().optional(),
+    }).optional(),
 });
 
 type UserDetailsFormValues = z.infer<typeof formSchema>;
@@ -31,6 +41,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit, isLoading, 
     defaultValues: {
       name: defaultValues?.name || "",
       phone: defaultValues?.phone || "",
+      address: defaultValues?.address || { street: '', number: '', reference: '' }
     },
   });
 
@@ -77,6 +88,36 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit, isLoading, 
                   <FormLabel>Telefone (com DDD)</FormLabel>
                   <FormControl>
                     <Input placeholder="(11) 98765-4321" {...field} disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </motion.div>
+         <motion.div variants={itemVariants}>
+            <FormField
+              control={form.control}
+              name="address.street"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Endereço de Entrega</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Rua, Número, Bairro" {...field} value={field.value ?? ''} disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </motion.div>
+         <motion.div variants={itemVariants}>
+            <FormField
+              control={form.control}
+              name="address.reference"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ponto de Referência</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Ex: Próximo à padaria, casa com muro azul..." {...field} value={field.value ?? ''} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

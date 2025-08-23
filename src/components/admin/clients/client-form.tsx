@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Textarea } from '../ui/textarea';
 
 const formSchema = z.object({
     id: z.string().optional(),
@@ -50,7 +51,7 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
         if (client) {
             form.reset(client);
         } else {
-            form.reset({ name: '', phone: '', address: {} });
+            form.reset({ name: '', phone: '', address: { street: '', number: '', neighborhood: '', city: '', state: '', zipCode: '', reference: '' } });
         }
     }, [client, form]);
 
@@ -73,7 +74,7 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetContent className="sm:max-w-lg">
+            <SheetContent className="sm:max-w-lg overflow-y-auto">
                 <SheetHeader>
                     <SheetTitle>{client ? 'Editar Cliente' : 'Adicionar Novo Cliente'}</SheetTitle>
                     <SheetDescription>
@@ -110,7 +111,7 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Rua / Logradouro</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -121,12 +122,45 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Número</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <SheetFooter>
+                        <FormField
+                            control={form.control}
+                            name="address.neighborhood"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Bairro</FormLabel>
+                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="address.city"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Cidade</FormLabel>
+                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="address.reference"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Ponto de Referência</FormLabel>
+                                    <FormControl><Textarea placeholder="Ex: Próximo à padaria, casa com muro azul..." {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <SheetFooter className="pt-6">
                             <SheetClose asChild>
                                 <Button type="button" variant="secondary">Cancelar</Button>
                             </SheetClose>
