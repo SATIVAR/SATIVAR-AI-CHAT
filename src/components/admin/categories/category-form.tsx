@@ -41,24 +41,24 @@ export default function CategoryForm({ isOpen, setIsOpen, category, allCategorie
     const form = useForm<CategoryFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            id: '',
             name: '',
             description: '',
             order: 0,
             imageUrl: '',
             nextStepSuggestion: '',
-            ...category,
         },
     });
 
     useEffect(() => {
         if (isOpen) {
             form.reset({
-                name: '',
-                description: '',
-                order: 0,
-                imageUrl: '',
-                nextStepSuggestion: '',
-                ...category
+                id: category?.id || '',
+                name: category?.name || '',
+                description: category?.description || '',
+                order: category?.order || 0,
+                imageUrl: category?.imageUrl || '',
+                nextStepSuggestion: category?.nextStepSuggestion || '',
             });
         }
     }, [isOpen, category, form]);
@@ -152,7 +152,7 @@ export default function CategoryForm({ isOpen, setIsOpen, category, allCategorie
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Sugestão de Próximo Passo</FormLabel>
-                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecione a próxima categoria a sugerir" />
