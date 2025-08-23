@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { Textarea } from '../ui/textarea';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
     id: z.string().optional(),
