@@ -5,12 +5,18 @@ import bcrypt from 'bcryptjs';
 import { db } from './admin';
 
 export async function doesOwnerExist(): Promise<boolean> {
+  console.log("==> Verificando se o dono existe...");
   try {
     const snapshot = await db.collection('owners').limit(1).get();
+    if (snapshot.empty) {
+      console.log("==> Nenhum dono encontrado.");
+      return false;
+    }
+    console.log("==> Dono encontrado.");
     return !snapshot.empty;
   } catch (error) {
-    console.error("Error checking if owner exists:", error);
-    // In case of error, prevent registration for safety
+    console.error("!!! ERRO CRÍTICO em doesOwnerExist:", error);
+    // Em caso de erro, previna o registro por segurança, assumindo que um dono pode existir.
     return true; 
   }
 }
