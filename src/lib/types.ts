@@ -1,21 +1,31 @@
 
+import type { Timestamp } from 'firebase/firestore';
+
 export interface ProductCategory {
   id: string;
   name: string;
   description: string;
+  order: number;
+  isActive: boolean;
+  imageUrl?: string;
 }
 
 export interface Product {
   id: string;
-  name: string;
+  name:string;
   description: string;
   price: number;
   imageUrl: string;
-  category: string; // Should correspond to a category id
+  categoryId: string;
+  isActive: boolean;
+  isFeatured: boolean;
+  category?: string;
 }
 
 export interface OrderItem extends Product {
   quantity: number;
+  unitPrice: number; // Snapshot of the price at the time of order
+  productName: string; // Snapshot of the name at the time of order
 }
 
 export interface ProductCardData {
@@ -59,7 +69,23 @@ export interface UserDetails {
 }
 
 export interface Order {
-  customer: UserDetails;
-  items: OrderItem[];
-  total: number;
+  id?: string;
+  clientInfo: UserDetails;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+  }[];
+  totalAmount: number;
+  status: 'Recebido' | 'Em Preparo' | 'Pronto para Entrega' | 'Finalizado' | 'Cancelado';
+  createdAt: Date | Timestamp;
+  updatedAt: Date | Timestamp;
+}
+
+export interface Client {
+    id?: string;
+    name: string;
+    phone: string;
+    lastOrderAt: Date | Timestamp;
 }

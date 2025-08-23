@@ -3,9 +3,11 @@
 
 import { generateAIPersona } from '@/ai/flows/generate-ai-persona';
 import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide-ordering-with-ai';
-import { menu } from '@/lib/menu';
-import { DynamicComponentData, Message, Order, OrderItem } from '@/lib/types';
+import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
+import { createOrder } from '@/lib/firebase/orders';
+import { DynamicComponentData, Message, Order, OrderItem, UserDetails } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
+import { Timestamp } from 'firebase/firestore';
 
 export async function getInitialGreeting(): Promise<string> {
   // This could be cached as well if the persona greeting doesn't need to be unique every single time.
@@ -16,10 +18,10 @@ export async function getInitialGreeting(): Promise<string> {
 // "Rule of Gold": Cache the knowledge base to be read only once per session/defined interval.
 export const getKnowledgeBase = unstable_cache(
     async () => {
-        // In a real application, this is where you would fetch data from Firestore.
-        // For now, we continue to use the static menu, but the caching mechanism is in place.
-        console.log("Fetching knowledge base (from static file)...");
-        return Promise.resolve(menu);
+        console.log("Fetching knowledge base (from Firestore)...");
+        const categories = await getAllCategories();
+        const items = await getAllProducts();
+        return { categories, items };
     },
     ['knowledge-base'], // Cache key
     { revalidate: 300 } // Revalidate every 5 minutes
@@ -81,14 +83,31 @@ export async function getAiResponse(
   return { text: response.text, components };
 }
 
-export async function submitOrder(order: Order): Promise<{ success: boolean }> {
-  console.log("Submitting order to Firestore:", order);
-  // In a real application, you would use the Firebase Admin SDK here to write to Firestore
-  // e.g., await db.collection('orders').add(order);
+export async function submitOrder(customer: UserDetails, orderItems: OrderItem[]): Promise<{ success: boolean; orderId?: string }> {
+  console.log("Submitting order to Firestore...");
   
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // For now, we'll just log and assume success.
-  return { success: true };
+  const total = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+  const newOrder: Order = {
+    clientInfo: customer,
+    items: orderItems.map(item => ({
+      productId: item.id,
+      productName: item.name,
+      quantity: item.quantity,
+      unitPrice: item.price
+    })),
+    totalAmount: total,
+    status: 'Recebido',
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+
+  try {
+    const orderId = await createOrder(newOrder);
+    console.log(`Order created successfully with ID: ${orderId}`);
+    return { success: true, orderId };
+  } catch (error) {
+    console.error("Failed to submit order to Firestore:", error);
+    return { success: false };
+  }
 }

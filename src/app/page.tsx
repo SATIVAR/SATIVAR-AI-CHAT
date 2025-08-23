@@ -3,9 +3,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ChatLayout from '@/components/chat/chat-layout';
-import { Message, OrderItem, UserDetails } from '@/lib/types';
-import { getInitialGreeting, getAiResponse, submitOrder } from './actions';
-import { menu as staticMenu } from '@/lib/menu';
+import { Message, OrderItem, UserDetails, Menu } from '@/lib/types';
+import { getInitialGreeting, getAiResponse, submitOrder, getKnowledgeBase } from './actions';
+
 
 const USER_DETAILS_KEY = 'utopizap_user_details';
 const CHAT_HISTORY_KEY = 'utopizap_chat_history';
@@ -16,10 +16,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAwaitingOrderDetails, setIsAwaitingOrderDetails] = useState(false);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
-  const menuRef = useRef(staticMenu);
+  const menuRef = useRef<Menu | null>(null);
 
-  // Effect to load data from localStorage on initial mount
+  // Effect to load menu and user data
   useEffect(() => {
+    // Fetch menu
+    getKnowledgeBase().then(menu => {
+      menuRef.current = menu;
+    });
+
     try {
       const storedUserDetails = localStorage.getItem(USER_DETAILS_KEY);
       if (storedUserDetails) {
@@ -28,7 +33,6 @@ export default function Home() {
       
       const storedChatHistory = localStorage.getItem(CHAT_HISTORY_KEY);
       if (storedChatHistory) {
-        // Parse messages and ensure timestamps are Date objects
         const parsedMessages = JSON.parse(storedChatHistory).map((msg: Message) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
@@ -40,7 +44,6 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Error reading from localStorage:", error);
-      // If localStorage is corrupt, start fresh
       localStorage.removeItem(CHAT_HISTORY_KEY);
       localStorage.removeItem(USER_DETAILS_KEY);
       fetchGreeting();
@@ -123,6 +126,7 @@ export default function Home() {
   }, [messages, order, isLoading]);
 
   const handleAddToOrder = useCallback((productId: string) => {
+    if (!menuRef.current) return;
     const product = menuRef.current.items.find(item => item.id === productId);
     if (!product) return;
   
@@ -131,10 +135,10 @@ export default function Home() {
       const existingItem = prevOrder.find(item => item.id === productId);
       if (existingItem) {
         updatedOrder = prevOrder.map(item =>
-          item.id === productId ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === productId ? { ...item, quantity: item.quantity + 1, unitPrice: product.price, productName: product.name } : item
         );
       } else {
-        updatedOrder = [...prevOrder, { ...product, quantity: 1 }];
+        updatedOrder = [...prevOrder, { ...product, quantity: 1, unitPrice: product.price, productName: product.name }];
       }
       return updatedOrder;
     });
@@ -152,8 +156,6 @@ export default function Home() {
     updateChatHistory(newMessages);
     setIsLoading(true);
 
-    // After adding an item, immediately call the AI for proactive suggestions (upsell/cross-sell)
-    // We create a temporary history for the AI call
     const tempHistoryForAI = [...newMessages, { id: 'temp-user-action', role: 'user', content: `Adicionei ${product.name} ao meu pedido.`, timestamp: new Date() }];
 
     getAiResponse(tempHistoryForAI, updatedOrder!).then(res => {
@@ -167,7 +169,6 @@ export default function Home() {
         updateChatHistory([...newMessages, aiMessage]);
     }).catch(error => {
         console.error("Failed to get post-addition AI response:", error);
-        // Optionally add an error message to the chat
     }).finally(() => {
         setIsLoading(false);
     });
@@ -180,11 +181,9 @@ export default function Home() {
     localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(data));
     
     try {
-      await submitOrder({
-        customer: data,
-        items: order,
-        total: order.reduce((acc, item) => acc + item.price * item.quantity, 0)
-      });
+      const result = await submitOrder(data, order);
+
+      if (!result.success) throw new Error("Order submission failed");
 
       const finalMessage: Message = {
         id: `final-${Date.now()}`,
@@ -193,12 +192,10 @@ export default function Home() {
         timestamp: new Date()
       };
       
-      // We keep the final message, but clear the rest of the history for the next order
       updateChatHistory([finalMessage]);
       setOrder([]);
       setIsAwaitingOrderDetails(false);
 
-      // Reset for next order after a delay
       setTimeout(() => {
         fetchGreeting();
       }, 8000);
@@ -220,10 +217,8 @@ export default function Home() {
 
   const handleUpdateOrder = (productId: string, quantity: number) => {
     if (quantity <= 0) {
-      // Remove item
       setOrder(prev => prev.filter(item => item.id !== productId));
     } else {
-      // Update quantity
       setOrder(prev => prev.map(item => item.id === productId ? { ...item, quantity } : item));
     }
   };
