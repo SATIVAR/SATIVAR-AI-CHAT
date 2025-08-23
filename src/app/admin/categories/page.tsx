@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import CategoriesDataTable from '@/components/admin/categories/categories-data-table';
 import { ProductCategory } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
-import { getSignedUrl, deleteFile } from '@/lib/firebase/actions';
+import { deleteFile, uploadFile } from '@/lib/firebase/actions';
 
 export default async function CategoriesPage() {
   
@@ -21,31 +21,24 @@ export default async function CategoriesPage() {
     
     const imageFile = formData.get('imageFile') as File | null;
     const categoryId = formData.get('id') as string | null;
-    
     let imageUrl = formData.get('imageUrl') as string;
 
     try {
         if (imageFile && imageFile.size > 0) {
-            // 1. Get a signed URL for upload
-            const { url, fileName, error } = await getSignedUrl(imageFile.type, imageFile.size, 'categories');
-            if (error || !url) throw new Error(error || "Failed to get signed URL.");
-
-            // 2. Upload the file directly to Google Cloud Storage
-            await fetch(url, {
-                method: 'PUT',
-                body: imageFile,
-                headers: { 'Content-Type': imageFile.type },
-            });
-            
-            // 3. Construct the public URL
-            imageUrl = `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/${fileName}`;
-
-            // 4. If updating, delete the old image
+            // 1. If updating and there's a new file, delete the old one first.
             const oldImageUrl = formData.get('imageUrl') as string;
             if (categoryId && oldImageUrl) {
-                const oldFileName = oldImageUrl.split('/').pop();
-                if (oldFileName) await deleteFile(`categories/${oldFileName}`);
+                // Extract file path from URL
+                const oldFilePath = new URL(oldImageUrl).pathname.split('/').slice(2).join('/');
+                await deleteFile(oldFilePath);
             }
+            
+            // 2. Upload the new file via server action
+            const uploadResult = await uploadFile(formData);
+            if (uploadResult.error || !uploadResult.url) {
+                 throw new Error(uploadResult.error || 'Falha no upload da imagem.');
+            }
+            imageUrl = uploadResult.url;
         }
 
         const categoryData: Partial<ProductCategory> = {
@@ -73,13 +66,27 @@ export default async function CategoriesPage() {
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
+  const handleDeleteCategory = async (id: string, imageUrl?: string) => {
     'use server';
-    const result = await deleteCategory(id);
-    if (result.success) {
-      revalidatePath('/admin/categories');
+
+    try {
+        // Delete the image from storage first
+        if (imageUrl) {
+            const filePath = new URL(imageUrl).pathname.split('/').slice(2).join('/');
+            await deleteFile(filePath);
+        }
+        
+        // Then, delete the category document from Firestore
+        const result = await deleteCategory(id);
+        if (result.success) {
+            revalidatePath('/admin/categories');
+        }
+        return result;
+
+    } catch (e: any) {
+        console.error("Error in handleDeleteCategory: ", e);
+        return { success: false, error: e.message || 'Falha ao excluir categoria.' };
     }
-    return result;
   };
 
 

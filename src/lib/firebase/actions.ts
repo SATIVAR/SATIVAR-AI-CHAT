@@ -1,53 +1,44 @@
+
 'use server';
 
 import { storage } from './admin';
 
 const BUCKET_NAME = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
-// Pro-tip: Set CORS on your bucket to allow uploads from your app's domain.
-// This is necessary to fix "unexpected response from server" errors during direct browser uploads.
-// 1. Create a file named cors.json with the content below.
-// 2. Replace the origins with your actual app domains (dev and prod).
-// 3. Run the gcloud command to apply the settings to your bucket.
-//
-// cors.json content:
-// [
-//   {
-//     "origin": ["http://localhost:9002", "https://your-production-app-url.com"],
-//     "method": ["PUT"],
-//     "responseHeader": ["Content-Type", "Content-Length"],
-//     "maxAgeSeconds": 3600
-//   }
-// ]
-//
-// Command to run:
-// gcloud storage buckets update gs://<your-bucket-name> --cors-file=cors.json
 
-
-export async function getSignedUrl(fileType: string, size: number, folder: string) {
+export async function uploadFile(formData: FormData) {
     if (!BUCKET_NAME) {
         throw new Error('Firebase Storage bucket name is not configured.');
     }
-    if (size > 10 * 1024 * 1024) { // 10 MB limit
-        return { error: 'File size exceeds 10MB limit.' };
+    
+    const file = formData.get('imageFile') as File | null;
+
+    if (!file) {
+        return { error: 'Nenhum arquivo de imagem fornecido.' };
+    }
+     if (file.size > 10 * 1024 * 1024) { // 10 MB limit
+        return { error: 'O arquivo excede o limite de 10MB.' };
     }
 
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const file = storage.bucket(BUCKET_NAME).file(fileName);
+
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const fileName = `categories/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    const storageFile = storage.bucket(BUCKET_NAME).file(fileName);
 
     try {
-        const [url] = await file.getSignedUrl({
-            version: 'v4',
-            action: 'write',
-            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-            contentType: fileType,
+        await storageFile.save(fileBuffer, {
+            metadata: { contentType: file.type }
         });
-        return { url, fileName };
+        
+        const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${fileName}`;
+
+        return { url: publicUrl };
     } catch (error: any) {
-        console.error("Error getting signed URL: ", error);
-        return { error: 'Could not get signed URL.' };
+        console.error("Error uploading file: ", error);
+        return { error: 'Não foi possível fazer o upload do arquivo.' };
     }
 }
+
 
 export async function deleteFile(filePath: string) {
     if (!BUCKET_NAME) {

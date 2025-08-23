@@ -23,7 +23,7 @@ import CategoryForm from './category-form';
 interface DataTableProps<TData extends ProductCategory, TValue> {
     data: TData[];
     onSave: (data: FormData) => Promise<{ success: boolean, error?: string }>;
-    onDelete: (id: string) => Promise<{ success: boolean, error?: string }>;
+    onDelete: (id: string, imageUrl?: string) => Promise<{ success: boolean, error?: string }>;
 }
 
 export function CategoriesDataTable<TData extends ProductCategory, TValue>({
@@ -95,13 +95,13 @@ export function CategoriesDataTable<TData extends ProductCategory, TValue>({
                              <AlertDialogHeader>
                                  <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                                  <AlertDialogDescription>
-                                     Esta ação marcará a categoria como inativa. Ela não será excluída permanentemente.
+                                     Esta ação excluirá a categoria e sua imagem permanentemente. Esta ação não pode ser desfeita.
                                  </AlertDialogDescription>
                              </AlertDialogHeader>
                              <AlertDialogFooter>
                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                  <AlertDialogAction onClick={async () => {
-                                      const result = await onDelete(category.id!);
+                                      const result = await onDelete(category.id!, category.imageUrl);
                                       if (result.success) {
                                         toast({ title: 'Sucesso!', description: 'Categoria excluída.' });
                                       } else {
