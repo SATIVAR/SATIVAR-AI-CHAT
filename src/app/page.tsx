@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ChatLayout from '@/components/chat/chat-layout';
-import { Message, OrderItem, UserDetails, Menu, Client } from '@/lib/types';
-import { getInitialGreeting, getAiResponse, submitOrder, getKnowledgeBase, findOrCreateClient, updateClient } from './actions';
+import { Message, OrderItem, UserDetails, Menu, Client, ConversationState } from '@/lib/types';
+import { getAiResponse, submitOrder, getKnowledgeBase, findOrCreateClient, updateClient } from './actions';
 import WelcomeScreen from '@/components/welcome-screen';
 
 
@@ -17,6 +17,7 @@ export default function Home() {
   const [order, setOrder] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAwaitingOrderDetails, setIsAwaitingOrderDetails] = useState(false);
+  const [conversationState, setConversationState] = useState<ConversationState>('AguardandoInicio');
   
   const [client, setClient] = useState<Client | null>(null);
   
@@ -38,6 +39,7 @@ export default function Home() {
             timestamp: new Date(msg.timestamp),
           }));
           setMessages(parsedMessages);
+          setConversationState('MostrandoCategorias'); // Assume they want to continue
         } else {
           fetchGreeting(parsedClient.name);
         }
@@ -81,30 +83,19 @@ export default function Home() {
   
   const fetchGreeting = async (clientName?: string) => {
     setIsLoading(true);
-    try {
-      const greeting = await getInitialGreeting(clientName);
-      const initialMessage: Message = {
-        id: 'ai-greeting',
-        role: 'ai',
-        content: greeting,
-        timestamp: new Date(),
-        components: [
-          { type: 'quickReplyButton', label: 'Sim, ver cardápio', payload: 'Gostaria de ver o cardápio' }
-        ]
-      };
-      updateChatHistory([initialMessage]);
-    } catch (error) {
-      console.error("Failed to get initial greeting:", error);
-      const errorMessage: Message = {
-        id: 'error-greeting',
-        role: 'ai',
-        content: "Olá! Tivemos um pequeno problema para conectar. Por favor, tente recarregar a página.",
-        timestamp: new Date(),
-      };
-      updateChatHistory([errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+    setConversationState('AguardandoInicio');
+    const greeting = `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! Sou a UtópiZap, sua consultora gastronômica. Vamos montar um pedido delicioso hoje?`;
+    const initialMessage: Message = {
+      id: 'ai-greeting',
+      role: 'ai',
+      content: greeting,
+      timestamp: new Date(),
+      components: [
+        { type: 'quickReplyButton', label: 'Sim, ver cardápio', payload: 'Gostaria de ver o cardápio' }
+      ]
+    };
+    updateChatHistory([initialMessage]);
+    setIsLoading(false);
   };
 
   const updateOrder = (updatedOrder: OrderItem[]) => {
@@ -131,9 +122,20 @@ export default function Home() {
     const newMessages = [...messages, userMessage];
     updateChatHistory(newMessages);
     setIsLoading(true);
+
+    // State machine logic
+    let nextState: ConversationState = conversationState;
+    if (text.toLowerCase().includes('cardápio')) {
+        nextState = 'MostrandoCategorias';
+    } else if (text.toLowerCase().includes('finalizar')) {
+        nextState = 'RevisandoPedido';
+    } else if (menuRef.current?.categories.some(c => c.name.toLowerCase() === text.toLowerCase())) {
+        nextState = 'MostrandoProdutos';
+    }
+    setConversationState(nextState);
     
     try {
-      const res = await getAiResponse(newMessages, order, client);
+      const res = await getAiResponse(newMessages, order, client, nextState);
       
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -161,7 +163,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, order, isLoading, client]);
+  }, [messages, order, isLoading, client, conversationState]);
 
   const handleAddToOrder = useCallback((productId: string) => {
     if (!menuRef.current || !client) return;
@@ -179,7 +181,20 @@ export default function Home() {
     }
     updateOrder(updatedOrder);
 
-  }, [order, client]);
+    // Change state to trigger upsell/cross-sell
+    setConversationState('ItemAdicionado');
+    // We don't send a message to the AI here anymore. The UI confirms the addition.
+    const confirmationMessage: Message = {
+        id: `confirm-${productId}-${Date.now()}`,
+        role: 'ai',
+        isConfirmation: true,
+        content: `${product.name} adicionado ao carrinho!`,
+        timestamp: new Date(),
+    };
+    updateChatHistory([...messages, confirmationMessage]);
+
+
+  }, [order, client, messages]);
 
   const handleSubmitOrder = async (data: UserDetails) => {
     setIsLoading(true);
@@ -216,6 +231,7 @@ export default function Home() {
       updateOrder([]); 
       localStorage.removeItem(ORDER_KEY);
       setIsAwaitingOrderDetails(false);
+      setConversationState('AguardandoInicio');
 
     } catch (error) {
       console.error('Failed to submit order', error);
@@ -256,24 +272,24 @@ export default function Home() {
   };
 
   const handleCancelOrder = () => {
-    const cancelMessage = 'quero cancelar meu pedido';
-    const userMessage: Message = {
-      id: `user-cancel-${Date.now()}`,
-      role: 'user',
-      content: cancelMessage,
-      timestamp: new Date(),
-    };
-    
-    const newMessages = [...messages, userMessage];
-    updateChatHistory(newMessages);
-
-    // Call AI to get a confirmation response for cancellation
-    handleSendMessage(cancelMessage);
-    
     // Clear the order locally
     updateOrder([]);
     localStorage.removeItem(ORDER_KEY);
     setIsAwaitingOrderDetails(false);
+
+    // Reset conversation
+    const cancelMessage: Message = {
+      id: `ai-cancel-${Date.now()}`,
+      role: 'ai',
+      content: "Pedido cancelado. Se mudar de ideia, estou por aqui! 👋",
+      timestamp: new Date(),
+    };
+    updateChatHistory([cancelMessage]);
+    
+    // Set a timeout to clear and start a new conversation
+    setTimeout(() => {
+        fetchGreeting(client?.name);
+    }, 2000);
   };
 
   if (!client) {
@@ -296,3 +312,5 @@ export default function Home() {
     />
   );
 }
+
+    

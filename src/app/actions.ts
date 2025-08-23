@@ -6,7 +6,7 @@ import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide
 import { findClientByPhone, createClient as createClientInDb, updateClient as updateClientInDb } from '@/lib/firebase/clients';
 import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
 import { createOrder } from '@/lib/firebase/orders';
-import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu } from '@/lib/types';
+import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu, ConversationState } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -141,6 +141,7 @@ export async function getAiResponse(
   history: Message[],
   currentOrder: OrderItem[],
   client: Client,
+  currentState: ConversationState
 ): Promise<{ text: string; components?: DynamicComponentData[] }> {
     
   const knowledgeBase = await getKnowledgeBase();
@@ -151,6 +152,7 @@ export async function getAiResponse(
       menu: JSON.stringify(knowledgeBase),
       currentOrder: JSON.stringify(currentOrder),
       client: JSON.stringify(client),
+      currentState,
   });
   
   const components = mapAiComponentsToAppComponents(response.components || []);
@@ -191,3 +193,5 @@ export async function submitOrder(client: Client, orderItems: OrderItem[]): Prom
     return { success: false };
   }
 }
+
+    

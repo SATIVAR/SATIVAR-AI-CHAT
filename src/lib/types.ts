@@ -119,3 +119,12 @@ export interface Client {
     createdAt: Date | Timestamp;
     lastOrderAt: Date | Timestamp;
 }
+
+export type ConversationState = 
+    | 'AguardandoInicio'
+    | 'MostrandoCategorias'
+    | 'MostrandoProdutos'
+    | 'ItemAdicionado'
+    | 'RevisandoPedido';
+
+    
