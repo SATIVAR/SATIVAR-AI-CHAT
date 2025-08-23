@@ -8,7 +8,7 @@ import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
 import { createOrder } from '@/lib/firebase/orders';
 import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 
 
 export async function findOrCreateClient(data: UserDetails): Promise<Client> {
