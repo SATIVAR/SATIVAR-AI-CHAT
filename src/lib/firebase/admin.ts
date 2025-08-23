@@ -13,10 +13,10 @@ function initializeAdminApp() {
   const serviceAccount: admin.ServiceAccount = {
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    privateKey: process.env.FIREBASE_PRIVATE_KEY ? JSON.parse('"' + process.env.FIREBASE_PRIVATE_KEY + '"') : undefined,
   };
 
-  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !service.Account.privateKey) {
     console.error('Firebase Admin SDK credentials are not set in .env');
     throw new Error('Firebase Admin SDK credentials are not set.');
   }
