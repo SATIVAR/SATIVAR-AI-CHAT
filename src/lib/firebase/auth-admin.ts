@@ -7,7 +7,7 @@ import { db } from './admin';
 export async function doesOwnerExist(): Promise<boolean> {
   console.log("==> Verificando se o dono existe...");
   try {
-    const snapshot = await db().collection('owners').limit(1).get();
+    const snapshot = await db.collection('owners').limit(1).get();
     if (snapshot.empty) {
       console.log("==> Nenhum dono encontrado.");
       return false;
@@ -35,7 +35,7 @@ export async function registerOwner(data: any): Promise<{ success: boolean, erro
 
     const passwordHash = await bcrypt.hash(password, 10);
     
-    await db().collection('owners').add({
+    await db.collection('owners').add({
       email,
       passwordHash,
       name,
@@ -56,7 +56,7 @@ export async function loginOwner(credentials: any): Promise<{ success: boolean, 
             return { success: false, error: 'Email e senha são obrigatórios.' };
         }
 
-        const snapshot = await db().collection('owners').where('email', '==', email).limit(1).get();
+        const snapshot = await db.collection('owners').where('email', '==', email).limit(1).get();
 
         if (snapshot.empty) {
             return { success: false, error: 'Credenciais inválidas.' };

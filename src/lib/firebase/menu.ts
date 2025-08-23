@@ -3,7 +3,7 @@ import { db } from './admin';
 import { ProductCategory, Product } from '../types';
 
 export async function getAllCategories(): Promise<ProductCategory[]> {
-  const snapshot = await db().collection('categories').where('isActive', '==', true).orderBy('order').get();
+  const snapshot = await db.collection('categories').where('isActive', '==', true).orderBy('order').get();
   if (snapshot.empty) {
     return [];
   }
@@ -11,7 +11,7 @@ export async function getAllCategories(): Promise<ProductCategory[]> {
 }
 
 export async function getAllProducts(): Promise<Product[]> {
-  const snapshot = await db().collection('products').where('isActive', '==', true).get();
+  const snapshot = await db.collection('products').where('isActive', '==', true).get();
   if (snapshot.empty) {
     return [];
   }

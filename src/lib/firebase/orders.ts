@@ -6,10 +6,10 @@ import { Timestamp } from 'firebase-admin/firestore';
 export async function createOrder(order: Omit<Order, 'id'>): Promise<string> {
     const { clientInfo } = order;
 
-    const clientQuery = await db().collection('clients').where('phone', '==', clientInfo.phone).limit(1).get();
+    const clientQuery = await db.collection('clients').where('phone', '==', clientInfo.phone).limit(1).get();
     
     if (clientQuery.empty) {
-        await db().collection('clients').add({
+        await db.collection('clients').add({
             ...clientInfo,
             createdAt: Timestamp.now(),
             lastOrderAt: Timestamp.now(),
@@ -21,13 +21,13 @@ export async function createOrder(order: Omit<Order, 'id'>): Promise<string> {
         });
     }
 
-    const orderRef = await db().collection('orders').add(order);
+    const orderRef = await db.collection('orders').add(order);
     return orderRef.id;
 }
 
 
 export async function getOrders(): Promise<Order[]> {
-    const snapshot = await db().collection('orders').orderBy('createdAt', 'desc').limit(50).get();
+    const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').limit(50).get();
     if (snapshot.empty) {
         return [];
     }

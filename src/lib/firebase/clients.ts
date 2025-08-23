@@ -5,7 +5,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 
 export async function findClientByPhone(phone: string): Promise<Client | null> {
-    const clientQuery = await db().collection('clients').where('phone', '==', phone).limit(1).get();
+    const clientQuery = await db.collection('clients').where('phone', '==', phone).limit(1).get();
     if (clientQuery.empty) {
         return null;
     }
@@ -14,7 +14,7 @@ export async function findClientByPhone(phone: string): Promise<Client | null> {
 }
 
 export async function createClient(clientData: Omit<Client, 'id'>): Promise<string> {
-    const docRef = await db().collection('clients').add(clientData);
+    const docRef = await db.collection('clients').add(clientData);
     return docRef.id;
 }
 
@@ -25,5 +25,3 @@ export async function createClient(clientData: Omit<Client, 'id'>): Promise<stri
 // - getClientById(id)
 // - updateClient(id, data)
 // - deleteClient(id)
-
-export {};
