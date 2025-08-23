@@ -2,30 +2,45 @@
 'use server';
 
 import { generateAIPersona } from '@/ai/flows/generate-ai-persona';
-import { renderDynamicComponents, RenderDynamicComponentsOutput } from '@/ai/flows/render-dynamic-components';
+import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide-ordering-with-ai';
 import { menu } from '@/lib/menu';
-import { DynamicComponentData, Order } from '@/lib/types';
+import { DynamicComponentData, Message, Order, OrderItem } from '@/lib/types';
+import { unstable_cache } from 'next/cache';
 
 export async function getInitialGreeting(): Promise<string> {
+  // This could be cached as well if the persona greeting doesn't need to be unique every single time.
   const persona = await generateAIPersona({});
   return persona.greeting;
 }
 
-function mapAiComponentsToAppComponents(aiComponents: RenderDynamicComponentsOutput['components']): DynamicComponentData[] {
+// "Rule of Gold": Cache the knowledge base to be read only once per session/defined interval.
+export const getKnowledgeBase = unstable_cache(
+    async () => {
+        // In a real application, this is where you would fetch data from Firestore.
+        // For now, we continue to use the static menu, but the caching mechanism is in place.
+        console.log("Fetching knowledge base (from static file)...");
+        return Promise.resolve(menu);
+    },
+    ['knowledge-base'], // Cache key
+    { revalidate: 300 } // Revalidate every 5 minutes
+);
+
+
+function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput['components']): DynamicComponentData[] {
   if (!aiComponents) return [];
 
   return aiComponents.map(comp => {
+    if (!comp || !comp.type) return null;
+    
     switch (comp.type) {
       case 'productCard':
-        const product = menu.items.find(item => item.name === comp.name);
         return {
           type: 'productCard',
-          productId: product?.id || 'unknown',
-          imageUrl: product?.imageUrl || 'https://placehold.co/600x400.png',
+          productId: comp.productId,
+          imageUrl: comp.imageUrl || 'https://placehold.co/600x400.png',
           name: comp.name,
           description: comp.description,
           price: comp.price,
-          action: comp.action
         };
       case 'quickReplyButton':
         return {
@@ -33,61 +48,37 @@ function mapAiComponentsToAppComponents(aiComponents: RenderDynamicComponentsOut
           label: comp.label,
           payload: comp.payload
         };
-      // A simple text check for the summary card trigger
-      case 'orderSummaryCard' as any: // type cast for now
+      case 'orderSummaryCard':
         return {
             type: 'orderSummaryCard'
         };
       default:
+        // This will catch any unexpected component types from the AI
+        console.warn('Unknown component type received from AI:', comp);
         return null;
     }
   }).filter((c): c is DynamicComponentData => c !== null);
 }
 
-function findSummaryCardTrigger(text: string): boolean {
-    const triggers = ["resumo do pedido", "finalizar pedido", "confirmar pedido", "seu pedido ficou assim"];
-    const lowerCaseText = text.toLowerCase();
-    return triggers.some(trigger => lowerCaseText.includes(trigger));
-}
-
 
 export async function getAiResponse(
-  query: string,
-  orderHistory: string[]
+  history: Message[],
+  currentOrder: OrderItem[]
 ): Promise<{ text: string; components?: DynamicComponentData[] }> {
-    const fullQuery = `
-    Histórico do Pedido Atual:
-    ${orderHistory.join('\n') || 'Nenhum item adicionado ainda.'}
+    
+  const knowledgeBase = await getKnowledgeBase();
 
-    Cardápio Disponível (para referência, não mostre a lista inteira de uma vez):
-    ${JSON.stringify(menu)}
+  const aiHistory = history.map(msg => ({ role: msg.role, content: msg.content }));
 
-    Mensagem do Cliente: "${query}"
-  `;
-
-  const response = await renderDynamicComponents({ query: fullQuery });
+  const response = await guideOrderingWithAI({
+      history: aiHistory,
+      menu: knowledgeBase,
+      currentOrder: currentOrder,
+  });
   
-  // Extract text response from the AI output. 
-  // For this app, the primary text response is not a direct field, so we synthesize one if needed.
-  let textResponse = "Como posso ajudar?"; 
-  if (response.components && response.components.length > 0) {
-      const firstProduct = response.components.find(c => c.type === 'productCard');
-      if(firstProduct) {
-          textResponse = `Claro! Aqui estão os itens que encontrei:`;
-      }
-  }
+  const components = mapAiComponentsToAppComponents(response.components || []);
 
-  // The AI might implicitly signal an order summary. We check for text triggers.
-  const hasSummaryCard = findSummaryCardTrigger(query);
-
-  let components = mapAiComponentsToAppComponents(response.components || []);
-
-  if (hasSummaryCard && !components.some(c => c.type === 'orderSummaryCard')) {
-    components.push({ type: 'orderSummaryCard' });
-    textResponse = "Ok, aqui está o resumo do seu pedido. Por favor, confirme se está tudo certo. 😉";
-  }
-
-  return { text: textResponse, components };
+  return { text: response.text, components };
 }
 
 export async function submitOrder(order: Order): Promise<{ success: boolean }> {

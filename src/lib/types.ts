@@ -1,11 +1,17 @@
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface Product {
   id: string;
   name: string;
   description: string;
   price: number;
   imageUrl: string;
-  category: string;
+  category: string; // Should correspond to a category id
 }
 
 export interface OrderItem extends Product {
@@ -19,7 +25,6 @@ export interface ProductCardData {
   name: string;
   description: string;
   price: number;
-  action: string;
 }
 
 export interface QuickReplyButtonData {
@@ -44,11 +49,7 @@ export interface Message {
 }
 
 export interface Menu {
-  categories: {
-    id: string;
-    name: string;
-    description: string;
-  }[];
+  categories: ProductCategory[];
   items: Product[];
 }
 

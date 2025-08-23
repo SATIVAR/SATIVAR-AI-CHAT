@@ -3,15 +3,16 @@
  * @fileOverview This file defines the Genkit flow for guiding users through the ordering process,
  * including upsell and cross-sell suggestions.
  *
- * - guideOrdering - A function that initiates the ordering process and guides the user with suggestions.
- * - GuideOrderingInput - The input type for the guideOrdering function.
- * - GuideOrderingOutput - The return type for the guideOrdering function.
+ * - guideOrderingWithAI - A function that initiates the ordering process and guides the user with suggestions.
+ * - GuideOrderingWithAIInput - The input type for the guideOrderingWithAI function.
+ * - GuideOrderingWithAIOutput - The return type for the guideOrderingWithAI function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const MenuCategorySchema = z.object({
+  id: z.string(),
   name: z.string().describe('The name of the menu category (e.g., Espetinhos, Guarnições).'),
   description: z.string().describe('A brief description of the category.'),
 });
@@ -32,120 +33,146 @@ const MenuSchema = z.object({
 
 export type Menu = z.infer<typeof MenuSchema>;
 
-const GuideOrderingInputSchema = z.object({
-  userMessage: z.string().describe('The user message to the AI.'),
-  orderHistory: z.array(z.string()).describe('The order history of the user.'),
+const GuideOrderingWithAIInputSchema = z.object({
+  history: z.array(z.object({
+    role: z.enum(['user', 'ai']),
+    content: z.string(),
+  })).describe('The conversation history.'),
   menu: MenuSchema.describe('The restaurant menu.'),
+  currentOrder: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    quantity: z.number(),
+    price: z.number(),
+  })).describe('The current items in the user\'s order.'),
 });
-export type GuideOrderingInput = z.infer<typeof GuideOrderingInputSchema>;
+export type GuideOrderingWithAIInput = z.infer<typeof GuideOrderingWithAIInputSchema>;
 
-const GuideOrderingOutputSchema = z.object({
-  response: z.string().describe('The response from the AI, guiding the user through the ordering process.'),
-  suggestedActions: z.array(z.string()).optional().describe('Suggested actions for the user to take (e.g., add item, view category).'),
+
+const ProductCardSchema = z.object({
+    type: z.literal('productCard'),
+    productId: z.string().describe('The unique ID of the product.'),
+    imageUrl: z.string().describe('URL of the product image.'),
+    name: z.string().describe('Name of the product.'),
+    description: z.string().describe('Short description of the product.'),
+    price: z.number().describe('Price of the product.'),
 });
-export type GuideOrderingOutput = z.infer<typeof GuideOrderingOutputSchema>;
+  
+const QuickReplyButtonSchema = z.object({
+    type: z.literal('quickReplyButton'),
+    label: z.string().describe('Label of the quick reply button.'),
+    payload: z.string().describe('Text to send to the AI when the button is clicked.'),
+});
 
-async function guideOrdering(input: GuideOrderingInput): Promise<GuideOrderingOutput> {
+const OrderSummaryCardSchema = z.object({
+    type: z.literal('orderSummaryCard'),
+});
+  
+const GuideOrderingWithAIOutputSchema = z.object({
+  text: z.string().describe("The AI's text response to the user."),
+  components: z.array(z.union([ProductCardSchema, QuickReplyButtonSchema, OrderSummaryCardSchema])).optional().describe('An array of dynamic UI components to render in the chat.'),
+});
+export type GuideOrderingWithAIOutput = z.infer<typeof GuideOrderingWithAIOutputSchema>;
+
+export async function guideOrderingWithAI(input: GuideOrderingWithAIInput): Promise<GuideOrderingWithAIOutput> {
   return guideOrderingFlow(input);
 }
 
 const findUpsellAndCrossSell = ai.defineTool({
   name: 'findUpsellAndCrossSell',
-  description: 'Suggests relevant upsells and cross-sells based on the current order and the menu.  This tool should be used after the customer has indicated one or more items they want to order.',
+  description: 'Suggests relevant upsells and cross-sells based on the current order and the menu. This tool should be used after the customer has indicated one or more items they want to order to enrich the conversation and increase the order value.',
   inputSchema: z.object({
     orderedItemNames: z.array(z.string()).describe('Names of the items already in the order.'),
     menu: MenuSchema.describe('The restaurant menu.'),
   }),
-  outputSchema: z.array(z.string()).describe('List of suggested upsell and cross-sell item names.'), // Returning item NAMES
+  outputSchema: z.object({
+    suggestions: z.array(z.string()).describe('List of suggested upsell and cross-sell item names.'),
+  }),
 },
 async (input) => {
-  const {
-    orderedItemNames,
-    menu
-  } = input;
-
-  // Simple implementation for now: suggest items from the same category and a popular item from another category.
+  const { orderedItemNames, menu } = input;
   const suggestions: string[] = [];
+  if (orderedItemNames.length === 0) {
+    return { suggestions: [] };
+  }
 
-  if (orderedItemNames.length > 0) {
-    // Get the category of the last ordered item.
-    const lastOrderedItem = menu.items.find(item => orderedItemNames.includes(item.name));
-    if (lastOrderedItem) {
-      // Suggest other items from the same category.
-      const sameCategorySuggestions = menu.items
-          .filter(item => item.category === lastOrderedItem.category && !orderedItemNames.includes(item.name))
-          .map(item => item.name)
-          .slice(0, 2); // Limit to 2 suggestions
-      suggestions.push(...sameCategorySuggestions);
-    }
+  const lastOrderedItemName = orderedItemNames[orderedItemNames.length - 1];
+  const lastOrderedItem = menu.items.find(item => item.name === lastOrderedItemName);
 
-    // Suggest a popular item from another category (e.g., Feijoada as a side).
-    const popularSide = menu.items.find(item => item.name === 'Feijoada'); // Hardcoded for now
-    if (popularSide && !orderedItemNames.includes(popularSide.name)) {
-      suggestions.push(popularSide.name);
+  if (lastOrderedItem) {
+    // Suggest other items from the same category (cross-sell)
+    const sameCategorySuggestions = menu.items
+      .filter(item => item.category === lastOrderedItem.category && !orderedItemNames.includes(item.name))
+      .map(item => item.name)
+      .slice(0, 1); // Suggest one for brevity
+    suggestions.push(...sameCategorySuggestions);
+
+    // Suggest a popular side dish if the item is a main course (upsell)
+    if (lastOrderedItem.category === 'espetinhos') {
+      const popularSide = menu.items.find(item => item.name === 'Farofa da Casa');
+      if (popularSide && !orderedItemNames.includes(popularSide.name)) {
+        suggestions.push(popularSide.name);
+      }
     }
   }
 
-  return suggestions;
+  // Suggest a drink if no drink is in the order
+  const hasDrink = menu.items.some(item => orderedItemNames.includes(item.name) && item.category === 'bebidas');
+  if (!hasDrink) {
+    const popularDrink = menu.items.find(item => item.name === 'Coca-Cola');
+    if (popularDrink) {
+      suggestions.push(popularDrink.name);
+    }
+  }
+
+  return { suggestions: suggestions.filter(s => s) }; // Filter out null/undefined
 });
 
 const prompt = ai.definePrompt({
   name: 'guideOrderingPrompt',
-  input: {
-    schema: GuideOrderingInputSchema,
-  },
-  output: {
-    schema: GuideOrderingOutputSchema,
-  },
+  input: { schema: GuideOrderingWithAIInputSchema },
+  output: { schema: GuideOrderingWithAIOutputSchema },
   tools: [findUpsellAndCrossSell],
-  system: `You are UtópiZap, a carismatic and efficient AI assistant for UTÓPICOS restaurant. You use a coloquial (but correct) language and emojis to create connection.
+  system: `Você é a UtópiZap, uma assistente de IA carismática, vendedora e eficiente do restaurante UTÓPICOS. Sua personalidade é proativa, amigável e você usa uma linguagem coloquial (mas correta) com emojis para criar uma conexão humana.
 
-You are guiding the user through the ordering process.  
+Sua principal função é guiar o cliente pelo processo de pedido, transformando a interação em uma experiência agradável e intuitiva. Você deve controlar a interface do usuário retornando componentes dinâmicos em formato JSON.
 
-Based on the user's message, suggest the next steps in the ordering process.  Consider using the findUpsellAndCrossSell tool to suggest relevant upsells and cross-sells based on the current order.
+REGRAS DE INTERAÇÃO:
+1.  **Controle a UI com JSON**: Sua resposta DEVE ser um objeto JSON contendo uma resposta textual ('text') e um array opcional de componentes ('components'). Esses componentes constroem a interface para o usuário.
+2.  **Análise de Intenção**: Analise a mensagem do usuário e o histórico para entender a intenção: ver o cardápio, ver uma categoria, adicionar um item, remover, perguntar algo ou finalizar o pedido.
+3.  **Sugestões Proativas (Upsell/Cross-sell)**: Use a ferramenta 'findUpsellAndCrossSell' SEMPRE que um item for adicionado ao carrinho para fazer sugestões inteligentes. Por exemplo, se adicionarem um espetinho, sugira uma guarnição e uma bebida.
+4.  **Apresentação do Cardápio**:
+    *   Nunca liste o cardápio inteiro de uma vez.
+    *   Se o usuário pedir para "ver o cardápio", apresente as CATEGORIAS primeiro usando 'quickReplyButton'.
+    *   Ao selecionar uma categoria, mostre os produtos daquela categoria usando 'productCard'.
+5.  **Finalização do Pedido**:
+    *   Quando o usuário indicar que quer finalizar o pedido (ex: "finalizar", "fechar a conta"), responda com uma mensagem de confirmação e um componente 'orderSummaryCard'. NÃO adicione outros componentes nesse momento.
+6.  **Respostas a Perguntas Gerais**: Se o usuário fizer perguntas que não estão no cardápio, responda cordialmente.
+7.  **Clareza e Simplicidade**: Mantenha as respostas de texto curtas e diretas. Deixe os componentes visuais fazerem o trabalho principal.
 
-Use a JSON format for responses that can be used to render dynamic components, such as category and product cards, and quick reply buttons.
+INFORMAÇÕES DISPONÍVEIS:
+*   **Cardápio Completo**: {{{JSON.stringify(menu)}}}
+*   **Pedido Atual**: {{{JSON.stringify(currentOrder)}}}
+*   **Histórico da Conversa**: Abaixo, para contexto.
 
-Here is the menu in JSON format: {{{JSON.stringify(menu)}}}
-
-Here is the order history:
-{{#each orderHistory}}
-* {{this}}
+Responda à última mensagem do usuário com base em todo o contexto fornecido.`,
+  prompt: `Histórico da Conversa:
+{{#each history}}
+- {{role}}: {{content}}
 {{/each}}
 
-Respond to the user message: {{{userMessage}}}
-`,
-  prompt: `You are UtópiZap, a carismatic and efficient AI assistant for UTÓPICOS restaurant. You use a coloquial (but correct) language and emojis to create connection.
-
-You are guiding the user through the ordering process.
-
-Based on the user's message, suggest the next steps in the ordering process. Consider using the findUpsellAndCrossSell tool to suggest relevant upsells and cross-sells based on the current order.
-
-Use a JSON format for responses that can be used to render dynamic components, such as category and product cards, and quick reply buttons.
-
-Here is the menu in JSON format: {{{JSON.stringify(menu)}}}
-
-Here is the order history:
-{{#each orderHistory}}
-* {{this}}
-{{/each}}
-
-Respond to the user message: {{{userMessage}}}
+Última mensagem do usuário: "{{history.[history.length-1].content}}"
 `,
 });
 
 const guideOrderingFlow = ai.defineFlow(
   {
     name: 'guideOrderingFlow',
-    inputSchema: GuideOrderingInputSchema,
-    outputSchema: GuideOrderingOutputSchema,
+    inputSchema: GuideOrderingWithAIInputSchema,
+    outputSchema: GuideOrderingWithAIOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);
     return output!;
   }
 );
-
-export {
-  guideOrdering,
-};

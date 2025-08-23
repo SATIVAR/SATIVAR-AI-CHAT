@@ -20,6 +20,7 @@ interface MessageBubbleProps {
   order: OrderItem[];
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
+  onUpdateOrder: (productId: string, quantity: number) => void;
   isLast: boolean;
 }
 
@@ -28,6 +29,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   order,
   onSendMessage,
   onAddToOrder,
+  onUpdateOrder,
   isLast
  }) => {
   const isUser = message.role === 'user';
@@ -92,7 +94,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       <div className="flex flex-col gap-1.5 max-w-[85%]">
           <div className={cn(contentClasses, "flex flex-col gap-3")}>
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              {message.content && <p className="whitespace-pre-wrap">{message.content}</p>}
               {message.components && (
                   <div className="mt-2 flex w-full flex-col gap-3">
                       {message.components.map((component, index) => {
@@ -102,7 +104,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                               case 'quickReplyButton':
                                   return <QuickReplyButton key={index} data={component} onSendMessage={onSendMessage} />;
                               case 'orderSummaryCard':
-                                  return <OrderSummaryCard key={index} order={order} />;
+                                  return <OrderSummaryCard key={index} order={order} onUpdateOrder={onUpdateOrder} />;
                               default:
                                   return null;
                           }

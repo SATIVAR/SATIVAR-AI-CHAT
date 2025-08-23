@@ -29,7 +29,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, onAddToOrder }) => {
         className="w-full max-w-xs"
         layout
     >
-        <Card className="w-full overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-xl">
+        <Card className="w-full overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-xl border-border/60">
             <CardHeader className="p-0">
                 <div className="aspect-video overflow-hidden">
                     <Image

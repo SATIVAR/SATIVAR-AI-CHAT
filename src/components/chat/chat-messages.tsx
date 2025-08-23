@@ -6,7 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 import { Message, OrderItem } from '@/lib/types';
 import MessageBubble from './message-bubble';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { OrderSummaryCardSkeleton, ChatBubbleSkeleton } from './skeletons';
+import { ChatBubbleSkeleton } from './skeletons';
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -14,6 +14,7 @@ interface ChatMessagesProps {
   isLoading: boolean;
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
+  onUpdateOrder: (productId: string, quantity: number) => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({ 
@@ -22,6 +23,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     isLoading,
     onSendMessage,
     onAddToOrder,
+    onUpdateOrder,
  }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -47,11 +49,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
               order={order}
               onSendMessage={onSendMessage}
               onAddToOrder={onAddToOrder}
+              onUpdateOrder={onUpdateOrder}
               isLast={index === messages.length - 1}
             />
           ))}
         </AnimatePresence>
-        {isLoading && <ChatBubbleSkeleton />}
+        {isLoading && !messages.some(m => m.isConfirmation) && <ChatBubbleSkeleton />}
       </div>
     </ScrollArea>
   );

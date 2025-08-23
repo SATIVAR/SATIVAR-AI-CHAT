@@ -18,6 +18,7 @@ interface ChatLayoutProps {
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
   onSubmitOrder: (data: { name: string; phone: string }) => void;
+  onUpdateOrder: (productId: string, quantity: number) => void;
   userDetails: UserDetails | null;
 }
 
@@ -29,6 +30,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onSendMessage,
   onAddToOrder,
   onSubmitOrder,
+  onUpdateOrder,
   userDetails
 }) => {
   return (
@@ -63,6 +65,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                 isLoading={isLoading}
                 onSendMessage={onSendMessage}
                 onAddToOrder={onAddToOrder}
+                onUpdateOrder={onUpdateOrder}
             />
             
             <footer className="w-full border-t bg-card p-4">
