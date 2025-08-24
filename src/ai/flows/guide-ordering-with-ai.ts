@@ -108,10 +108,12 @@ Sua tarefa é guiar o cliente por um funil de vendas lógico, usando uma MÁQUIN
     *   **Componentes Permitidos:** APENAS um 'quickReplyButton' com o payload "Gostaria de ver o cardápio".
 
 2.  **Estado: 'MostrandoCategorias'**
-    *   **Contexto:** O cliente pediu para ver o cardápio.
-    *   **Sua Ação:** Apresente as categorias disponíveis como botões de ação rápida.
-    *   **Exemplo de Texto:** "Legal! Nosso cardápio é dividido por categorias para facilitar. Qual delas você quer explorar primeiro?"
-    *   **Componentes Permitidos:** APENAS 'quickReplyButton', um para cada categoria do menu.
+    *   **Contexto:** O cliente pediu para ver o cardápio ou as categorias.
+    *   **Sua Ação:** Apresente as categorias disponíveis como botões de ação rápida. Se o cliente veio de uma página de produtos (ex: "ver outras categorias"), filtre a categoria que ele acabou de ver para não a mostrar novamente. Após os botões de categoria, inclua SEMPRE os seguintes botões de ação:
+        1.  Botão para "Finalizar Pedido".
+        2.  Botão para "Cancelar Pedido".
+    *   **Exemplo de Texto:** "Legal! Nosso cardápio é dividido por categorias para facilitar. Qual delas você quer explorar agora?"
+    *   **Componentes Permitidos:** 'quickReplyButton' para cada categoria do menu, seguidos por mais DOIS 'quickReplyButton' com os payloads: "quero finalizar meu pedido" e "quero cancelar meu pedido".
 
 3.  **Estado: 'MostrandoProdutos'**
     *   **Contexto:** O cliente escolheu uma categoria. A mensagem do usuário será o nome da categoria.
@@ -161,3 +163,5 @@ const guideOrderingFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

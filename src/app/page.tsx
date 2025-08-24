@@ -70,6 +70,8 @@ export default function Home() {
     localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
     localStorage.removeItem(ACTIVE_ORDER_SNAPSHOT_KEY);
     localStorage.removeItem(CHAT_HISTORY_KEY);
+    localStorage.removeItem(ORDER_KEY); // Clear the cart
+    setOrder([]); // Clear the cart in state
     
     if (client) {
       fetchGreeting(client.name);
@@ -78,7 +80,6 @@ export default function Home() {
 
   const handleCancelOrder = useCallback(() => {
     updateOrder([]);
-    localStorage.removeItem(ORDER_KEY);
     setIsAwaitingOrderDetails(false);
     
     if(activeOrderId) {
@@ -209,9 +210,8 @@ export default function Home() {
                   { type: 'quickReplyButton', label: 'Ver Detalhes do Pedido', payload: 'ver_detalhes' }
                  ] : undefined,
             };
-            const newMessages = [...messages, aiMessage]
-            setMessages(newMessages);
-            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(newMessages));
+            setMessages(prevMessages => [...prevMessages, aiMessage]);
+            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify([...messages, aiMessage]));
              toast({
                 title: 'Atualização do Pedido!',
                 description: statusMessage,
@@ -253,6 +253,11 @@ export default function Home() {
       setIsOrderDetailsModalOpen(true);
       return;
     }
+    
+    if (text.toLowerCase().includes('cancelar')) {
+        handleCancelOrder();
+        return;
+    }
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -272,10 +277,6 @@ export default function Home() {
         nextState = 'RevisandoPedido';
     } else if (menuRef.current?.categories.some(c => c.name.toLowerCase() === text.toLowerCase() || `ver ${c.name.toLowerCase()}` === text.toLowerCase())) {
         nextState = 'MostrandoProdutos';
-    } else if (text.toLowerCase().includes('cancelar')) {
-        handleCancelOrder();
-        setIsLoading(false);
-        return;
     }
     setConversationState(nextState);
     
@@ -451,3 +452,6 @@ export default function Home() {
   );
 }
 
+
+
+    
