@@ -39,7 +39,7 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
       animate="visible"
       layout
     >
-        {isOrderActive ? (
+        {isOrderActive && onOpenOrderDetails ? (
             <motion.div variants={buttonVariants}>
                 <Button variant="outline" className="w-full justify-start" onClick={onOpenOrderDetails}>
                     <FileText className="mr-2 h-4 w-4" />

@@ -160,7 +160,7 @@ export default function Home() {
 
     return () => unsub();
 
-}, [activeOrderId]); 
+}, [activeOrderId, messages, toast]); 
 
 
   const handleLogin = async (data: UserDetails) => {
@@ -211,6 +211,43 @@ export default function Home() {
     setMessages(updatedMessages);
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
   }
+
+  const handleClearAfterOrder = () => {
+    setActiveOrderId(null);
+    setActiveOrderSnapshot(null);
+    previousStatusRef.current = null;
+    localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
+    localStorage.removeItem(ACTIVE_ORDER_SNAPSHOT_KEY);
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    
+    if (client) {
+      fetchGreeting(client.name);
+    }
+  };
+
+
+  const handleCancelOrder = useCallback(() => {
+    updateOrder([]);
+    localStorage.removeItem(ORDER_KEY);
+    setIsAwaitingOrderDetails(false);
+    
+    if(activeOrderId) {
+       // TODO: Call backend to set order status to 'Cancelled'
+       handleClearAfterOrder();
+    }
+
+    const cancelMessage: Message = {
+      id: `ai-cancel-${Date.now()}`,
+      role: 'ai',
+      content: "Pedido cancelado. Se mudar de ideia, estou por aqui! 👋",
+      timestamp: new Date(),
+      components: [
+        { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
+      ]
+    };
+    updateChatHistory([cancelMessage]);
+    setConversationState('AguardandoInicio');
+  }, [activeOrderId, client]);
 
   const handleSendMessage = useCallback(async (text: string, stateOverride?: ConversationState) => {
     if (!text.trim() || isLoading || !client) return;
@@ -274,7 +311,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, order, isLoading, client, conversationState]);
+  }, [messages, order, isLoading, client, conversationState, handleCancelOrder]);
 
   const handleAddToOrder = (productId: string) => {
     if (!menuRef.current || !client) return;
@@ -304,9 +341,7 @@ export default function Home() {
     
     setTimeout(() => {
         setMessages(prevMessages => prevMessages.filter(m => m.id !== confirmationMessage.id));
-        if (!activeOrderId) {
-            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.filter(m => m.id !== confirmationMessage.id)));
-        }
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.filter(m => m.id !== confirmationMessage.id)));
     }, 2000);
   };
 
@@ -348,8 +383,6 @@ export default function Home() {
       updateOrder([]); 
       
       setIsAwaitingOrderDetails(false);
-      // Don't change conversation state, let it be driven by the active order
-      // setConversationState('AguardandoInicio');
 
     } catch (error) {
       console.error('Failed to submit order', error);
@@ -389,44 +422,6 @@ export default function Home() {
     updateOrder(updatedOrder);
   };
 
-  const handleClearAfterOrder = () => {
-    setActiveOrderId(null);
-    setActiveOrderSnapshot(null);
-    previousStatusRef.current = null;
-    localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
-    localStorage.removeItem(ACTIVE_ORDER_SNAPSHOT_KEY);
-    localStorage.removeItem(CHAT_HISTORY_KEY);
-    // After finishing, fetch a new greeting to start over
-    if (client) {
-      fetchGreeting(client.name);
-    }
-  };
-
-
-  const handleCancelOrder = () => {
-    updateOrder([]);
-    localStorage.removeItem(ORDER_KEY);
-    setIsAwaitingOrderDetails(false);
-    
-    // Additional logic to handle cancelling an order submitted to the backend
-    if(activeOrderId) {
-       // Potentially call a backend function to set the order status to 'Cancelled'
-       // For now, we just clear the local state
-       handleClearAfterOrder();
-    }
-
-    const cancelMessage: Message = {
-      id: `ai-cancel-${Date.now()}`,
-      role: 'ai',
-      content: "Pedido cancelado. Se mudar de ideia, estou por aqui! 👋",
-      timestamp: new Date(),
-      components: [
-        { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
-      ]
-    };
-    updateChatHistory([cancelMessage]);
-    setConversationState('AguardandoInicio');
-  };
 
   if (!client) {
     return <WelcomeScreen onLogin={handleLogin} isLoading={isLoading} />
