@@ -28,6 +28,7 @@ interface ChatLayoutProps {
   userDetails: Client | null;
   activeOrderId: string | null;
   activeOrderStatus: Order['status'] | null;
+  onOpenOrderDetails: () => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -43,7 +44,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onUpdateClient,
   userDetails,
   activeOrderId,
-  activeOrderStatus
+  activeOrderStatus,
+  onOpenOrderDetails,
 }) => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const totalItems = order.reduce((acc, item) => acc + item.quantity, 0);
@@ -97,6 +99,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                 onSendMessage={onSendMessage}
                 onAddToOrder={onAddToOrder}
                 activeOrderStatus={activeOrderStatus}
+                onOpenOrderDetails={onOpenOrderDetails}
             />
             
             <footer className="w-full border-t border-border/80 bg-secondary/50 p-4 dark:bg-card">
@@ -133,3 +136,5 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
 };
 
 export default ChatLayout;
+
+    

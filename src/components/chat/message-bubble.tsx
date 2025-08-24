@@ -23,6 +23,7 @@ interface MessageBubbleProps {
   onAddToOrder: (productId: string) => void;
   isLast: boolean;
   activeOrderStatus: Order['status'] | null;
+  onOpenOrderDetails: () => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ 
@@ -30,7 +31,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onSendMessage,
   onAddToOrder,
   isLast,
-  activeOrderStatus
+  activeOrderStatus,
+  onOpenOrderDetails
  }) => {
   const isUser = message.role === 'user';
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -78,8 +80,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const hasOnlyCompactCards = message.components && message.components.length > 0 && message.components.every(c => c.type === 'productCard');
 
-  // Do not render user messages that are just placeholders for an action
-  if (isUser && message.content.startsWith('Adicionado:')) {
+  if (isUser && (message.content.startsWith('Adicionado:') || message.content === 'ver_detalhes')) {
     return null;
   }
 
@@ -120,7 +121,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                   case 'orderSummaryCard':
                                       return <OrderSummaryCard key={index} data={component} />;
                                   case 'orderControlButtons':
-                                      return <OrderControlButtons key={index} onSendMessage={onSendMessage} orderStatus={activeOrderStatus} />;
+                                      return <OrderControlButtons key={index} onSendMessage={onSendMessage} orderStatus={activeOrderStatus} onOpenOrderDetails={onOpenOrderDetails} />;
                                   default:
                                       return null;
                               }
@@ -145,3 +146,5 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 };
 
 export default MessageBubble;
+
+    

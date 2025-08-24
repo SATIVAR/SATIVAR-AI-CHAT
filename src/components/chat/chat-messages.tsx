@@ -13,13 +13,15 @@ interface ChatMessagesProps {
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
   activeOrderStatus: Order['status'] | null;
+  onOpenOrderDetails: () => void;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({ 
     messages, 
     onSendMessage,
     onAddToOrder,
-    activeOrderStatus
+    activeOrderStatus,
+    onOpenOrderDetails
  }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -49,6 +51,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
               onAddToOrder={onAddToOrder}
               isLast={index === messages.length - 1}
               activeOrderStatus={activeOrderStatus}
+              onOpenOrderDetails={onOpenOrderDetails}
             />
           ))}
         </AnimatePresence>
@@ -59,3 +62,5 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
 };
 
 export default ChatMessages;
+
+    

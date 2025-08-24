@@ -4,15 +4,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, X } from 'lucide-react';
+import { ArrowRight, X, FileText } from 'lucide-react';
 import { Order } from '@/lib/types';
 
 interface OrderControlButtonsProps {
   onSendMessage: (text: string) => void;
-  orderStatus?: Order['status'] | null; // Make status optional and nullable
+  orderStatus?: Order['status'] | null;
+  onOpenOrderDetails?: () => void;
 }
 
-const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage, orderStatus }) => {
+const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage, orderStatus, onOpenOrderDetails }) => {
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -27,8 +28,8 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
     visible: { opacity: 1, y: 0 },
   };
   
-  // Conditionally render the cancel button
   const canCancel = orderStatus === 'Recebido';
+  const isOrderActive = !!orderStatus && orderStatus !== 'Finalizado' && orderStatus !== 'Cancelado';
 
   return (
     <motion.div
@@ -38,12 +39,21 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
       animate="visible"
       layout
     >
-        <motion.div variants={buttonVariants}>
-            <Button variant="outline" className="w-full justify-start" onClick={() => onSendMessage('Gostaria de ver o cardápio')}>
-                <ArrowRight className="mr-2 h-4 w-4" />
-                Fazer Novo Pedido
-            </Button>
-        </motion.div>
+        {isOrderActive ? (
+            <motion.div variants={buttonVariants}>
+                <Button variant="outline" className="w-full justify-start" onClick={onOpenOrderDetails}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Ver Meu Pedido
+                </Button>
+            </motion.div>
+        ) : (
+            <motion.div variants={buttonVariants}>
+                <Button variant="outline" className="w-full justify-start" onClick={() => onSendMessage('Gostaria de ver o cardápio')}>
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                    Fazer Novo Pedido
+                </Button>
+            </motion.div>
+        )}
 
         {canCancel && (
             <motion.div variants={buttonVariants}>
@@ -58,3 +68,5 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
 };
 
 export default OrderControlButtons;
+
+    

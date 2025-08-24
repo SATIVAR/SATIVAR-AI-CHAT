@@ -9,12 +9,14 @@ import WelcomeScreen from '@/components/welcome-screen';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
+import OrderDetailsModal from '@/components/chat/order-details-modal';
 
 
 const USER_DETAILS_KEY = 'utopizap_user_details';
 const CHAT_HISTORY_KEY = 'utopizap_chat_history';
 const ORDER_KEY = 'utopizap_order';
 const ACTIVE_ORDER_ID_KEY = 'utopizap_active_order_id';
+const ACTIVE_ORDER_SNAPSHOT_KEY = 'utopizap_active_order_snapshot';
 
 
 export default function Home() {
@@ -27,8 +29,10 @@ export default function Home() {
   
   const [client, setClient] = useState<Client | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [activeOrderStatus, setActiveOrderStatus] = useState<Order['status'] | null>(null);
+  const [activeOrderSnapshot, setActiveOrderSnapshot] = useState<Order | null>(null);
   
+  const [isOrderDetailsModalOpen, setIsOrderDetailsModalOpen] = useState(false);
+
   const menuRef = useRef<Menu | null>(null);
   const previousStatusRef = useRef<string | null>(null);
 
@@ -44,17 +48,23 @@ export default function Home() {
         
         const storedChatHistory = localStorage.getItem(CHAT_HISTORY_KEY);
         const storedOrderId = localStorage.getItem(ACTIVE_ORDER_ID_KEY);
+        const storedOrderSnapshot = localStorage.getItem(ACTIVE_ORDER_SNAPSHOT_KEY);
         
         if (storedOrderId) {
             setActiveOrderId(storedOrderId);
-        } else if (storedChatHistory) {
+            if (storedOrderSnapshot) {
+              setActiveOrderSnapshot(JSON.parse(storedOrderSnapshot));
+            }
+        } 
+        
+        if (storedChatHistory) {
           const parsedMessages: Message[] = JSON.parse(storedChatHistory).map((msg: Message) => ({
             ...msg,
             timestamp: new Date(msg.timestamp),
           }));
           setMessages(parsedMessages);
           setConversationState('MostrandoCategorias'); // Assume they want to continue
-        } else {
+        } else if (!storedOrderId) {
           fetchGreeting(parsedClient.name);
         }
 
@@ -78,16 +88,28 @@ export default function Home() {
     const unsub = onSnapshot(doc(db, "orders", activeOrderId), (doc) => {
         const orderData = doc.data() as Order;
         if (!orderData) return;
+        
+        // Update the full order snapshot
+        const serializableOrderData = {
+          ...orderData,
+          id: doc.id,
+          createdAt: (orderData.createdAt as any).toDate(),
+          updatedAt: (orderData.updatedAt as any).toDate(),
+        };
+        setActiveOrderSnapshot(serializableOrderData);
+        localStorage.setItem(ACTIVE_ORDER_SNAPSHOT_KEY, JSON.stringify(serializableOrderData));
 
         const currentStatus = orderData.status;
-        setActiveOrderStatus(currentStatus); // Store current status
         const previousStatus = previousStatusRef.current;
+        
+        // No duplicate notifications on first load
+        if (previousStatus === null) {
+            previousStatusRef.current = currentStatus;
+            return;
+        }
 
-        // Evita notificações duplicadas no primeiro carregamento
         if (currentStatus === previousStatus) return;
-
         previousStatusRef.current = currentStatus;
-        // Evita notificar sobre o status "Recebido" que já é o inicial
         if(currentStatus === 'Recebido') return;
 
 
@@ -115,6 +137,9 @@ export default function Home() {
                 role: 'ai',
                 content: statusMessage,
                 timestamp: new Date(),
+                components: [
+                  { type: 'quickReplyButton', label: 'Ver Detalhes do Pedido', payload: 'ver_detalhes' }
+                ]
             };
             updateChatHistory([...messages, aiMessage]);
              toast({
@@ -126,7 +151,7 @@ export default function Home() {
 
     return () => unsub();
 
-}, [activeOrderId, messages]); // Adicionado messages aqui para garantir que o histórico seja atual
+}, [activeOrderId, messages]); 
 
 
   const handleLogin = async (data: UserDetails) => {
@@ -175,14 +200,16 @@ export default function Home() {
 
   const updateChatHistory = (updatedMessages: Message[]) => {
     setMessages(updatedMessages);
-    // Only store history if there's no active order being tracked
-    if (!activeOrderId) {
-        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
-    }
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
   }
 
   const handleSendMessage = useCallback(async (text: string, stateOverride?: ConversationState) => {
     if (!text.trim() || isLoading || !client) return;
+
+    if (text === 'ver_detalhes') {
+      setIsOrderDetailsModalOpen(true);
+      return;
+    }
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -195,7 +222,6 @@ export default function Home() {
     updateChatHistory(newMessages);
     setIsLoading(true);
 
-    // State machine logic
     let nextState: ConversationState = stateOverride || conversationState;
     if (text.toLowerCase().includes('cardápio') || text.toLowerCase().includes('outra categoria')) {
         nextState = 'MostrandoCategorias';
@@ -239,7 +265,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, order, isLoading, client, conversationState, activeOrderId]);
+  }, [messages, order, isLoading, client, conversationState]);
 
   const handleAddToOrder = (productId: string) => {
     if (!menuRef.current || !client) return;
@@ -257,26 +283,22 @@ export default function Home() {
     }
     updateOrder(updatedOrder);
 
-    // Show a temporary confirmation message
     const confirmationMessage: Message = {
       id: `confirm-${Date.now()}`,
       role: 'ai',
       content: `Adicionado: 1x ${product.name}`,
       timestamp: new Date(),
-      isConfirmation: true, // This is a new flag
+      isConfirmation: true,
     };
 
     updateChatHistory([...messages, confirmationMessage]);
     
-    // Auto-remove the confirmation after a few seconds
     setTimeout(() => {
         setMessages(prevMessages => prevMessages.filter(m => m.id !== confirmationMessage.id));
         if (!activeOrderId) {
             localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.filter(m => m.id !== confirmationMessage.id)));
         }
     }, 2000);
-
-
   };
 
   const handleSubmitOrder = async (data: UserDetails) => {
@@ -286,17 +308,15 @@ export default function Home() {
     setClient(fullClientDetails);
     localStorage.setItem(USER_DETAILS_KEY, JSON.stringify(fullClientDetails));
     
-    const submittedOrder = [...order]; // Capture the order state
+    const submittedOrder = [...order];
 
     try {
       const result = await submitOrder(fullClientDetails, submittedOrder);
       if (!result.success || !result.orderId) throw new Error("Order submission failed");
 
-      // Generate the summary details
       const summaryText = submittedOrder.map(item => `${item.quantity}x ${item.productName}`).join('\n');
       const totalAmount = submittedOrder.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-      // Create a final confirmation message with a detailed summary card
       const finalMessage: Message = {
         id: `final-${Date.now()}`,
         role: 'ai',
@@ -308,25 +328,18 @@ export default function Home() {
             summary: summaryText,
             total: totalAmount,
           },
-          { type: 'orderControlButtons' } // Will now conditionally show cancel button
+          { type: 'orderControlButtons' }
         ]
       };
       
-      // Correctly set the state for order tracking
       setActiveOrderId(result.orderId);
-      setActiveOrderStatus('Recebido'); // Set initial status
       localStorage.setItem(ACTIVE_ORDER_ID_KEY, result.orderId);
       
-      // Clear previous history and set the new one with only the final message
-      localStorage.removeItem(CHAT_HISTORY_KEY);
       updateChatHistory([finalMessage]);
-      
-      // Clean up the current order from state and storage
       updateOrder([]); 
-      localStorage.removeItem(ORDER_KEY);
       
       setIsAwaitingOrderDetails(false);
-      setConversationState('AguardandoInicio'); // Ready for a new order
+      setConversationState('AguardandoInicio');
 
     } catch (error) {
       console.error('Failed to submit order', error);
@@ -368,9 +381,15 @@ export default function Home() {
 
   const handleClearAfterOrder = () => {
     setActiveOrderId(null);
-    setActiveOrderStatus(null);
+    setActiveOrderSnapshot(null);
     previousStatusRef.current = null;
     localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
+    localStorage.removeItem(ACTIVE_ORDER_SNAPSHOT_KEY);
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    // After finishing, fetch a new greeting to start over
+    if (client) {
+      fetchGreeting(client.name);
+    }
   };
 
 
@@ -379,8 +398,6 @@ export default function Home() {
     localStorage.removeItem(ORDER_KEY);
     setIsAwaitingOrderDetails(false);
     if(activeOrderId) {
-        // Here you might want to call a server action to update order status to 'Canceled' in Firestore
-        // For now, we just clear the local state
        handleClearAfterOrder();
     }
 
@@ -402,6 +419,7 @@ export default function Home() {
   }
 
   return (
+    <>
     <ChatLayout
       messages={messages}
       order={order}
@@ -415,7 +433,16 @@ export default function Home() {
       onUpdateClient={handleUpdateClient}
       userDetails={client}
       activeOrderId={activeOrderId}
-      activeOrderStatus={activeOrderStatus}
+      activeOrderStatus={activeOrderSnapshot?.status || null}
+      onOpenOrderDetails={() => setIsOrderDetailsModalOpen(true)}
     />
+    <OrderDetailsModal
+      isOpen={isOrderDetailsModalOpen}
+      setIsOpen={setIsOrderDetailsModalOpen}
+      order={activeOrderSnapshot}
+    />
+    </>
   );
 }
+
+    
