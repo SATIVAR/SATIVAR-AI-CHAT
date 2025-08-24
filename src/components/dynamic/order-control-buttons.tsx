@@ -47,7 +47,7 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
 
         {canCancel && (
             <motion.div variants={buttonVariants}>
-                <Button variant="destructive_outline" className="w-full justify-start" onClick={() => onSendMessage('quero cancelar meu pedido')}>
+                <Button variant="destructive" className="w-full justify-start" onClick={() => onSendMessage('quero cancelar meu pedido')}>
                     <X className="mr-2 h-4 w-4" />
                     Cancelar Pedido
                 </Button>

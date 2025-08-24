@@ -15,8 +15,7 @@ interface OrderSummaryCardProps {
 const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ data }) => {
     const { toast } = useToast();
 
-    // In this new flow, the summary card is just a placeholder.
-    // The actual order details are managed in the CartModal.
+    // This card can now be a placeholder or a full summary.
     React.useEffect(() => {
         if (!data.summary) { // Only toast if it's the pre-submission card
             toast({
@@ -41,13 +40,13 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ data }) => {
             layout
             className="w-full"
         >
-            <Card className="w-full shadow-lg border-primary/20">
+            <Card className="w-full shadow-lg border-primary/20 bg-primary/5 dark:bg-primary/10">
                 <CardHeader>
                     <CardTitle>✅ Pedido Confirmado!</CardTitle>
                     <CardDescription>Resumo do seu pedido:</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans bg-secondary/50 p-3 rounded-md">
+                    <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans bg-background/50 p-3 rounded-md border">
                         {data.summary}
                     </pre>
                 </CardContent>
