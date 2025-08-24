@@ -40,6 +40,11 @@ export default function Home() {
     setMessages(updatedMessages);
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
   }
+  
+  const updateOrder = (updatedOrder: OrderItem[]) => {
+      setOrder(updatedOrder);
+      localStorage.setItem(ORDER_KEY, JSON.stringify(updatedOrder));
+  }
 
   const fetchGreeting = useCallback(async (clientName?: string) => {
     setIsLoading(true);
@@ -200,12 +205,13 @@ export default function Home() {
                 role: 'ai',
                 content: statusMessage,
                 timestamp: new Date(),
-                 components: [
+                 components: currentStatus !== 'Finalizado' && currentStatus !== 'Cancelado' ? [
                   { type: 'quickReplyButton', label: 'Ver Detalhes do Pedido', payload: 'ver_detalhes' }
-                ]
+                 ] : undefined,
             };
-            setMessages(prevMessages => [...prevMessages, aiMessage]);
-            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify([...messages, aiMessage]));
+            const newMessages = [...messages, aiMessage]
+            setMessages(newMessages);
+            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(newMessages));
              toast({
                 title: 'Atualização do Pedido!',
                 description: statusMessage,
@@ -238,11 +244,6 @@ export default function Home() {
       setIsLoading(false);
     }
   };
-  
-  const updateOrder = (updatedOrder: OrderItem[]) => {
-      setOrder(updatedOrder);
-      localStorage.setItem(ORDER_KEY, JSON.stringify(updatedOrder));
-  }
 
 
   const handleSendMessage = useCallback(async (text: string, stateOverride?: ConversationState) => {
@@ -265,7 +266,7 @@ export default function Home() {
     setIsLoading(true);
 
     let nextState: ConversationState = stateOverride || conversationState;
-    if (text.toLowerCase().includes('cardápio') || text.toLowerCase().includes('outra categoria')) {
+    if (text.toLowerCase().includes('cardápio') || text.toLowerCase().includes('outra categoria') || text.toLowerCase().includes('ver outras categorias')) {
         nextState = 'MostrandoCategorias';
     } else if (text.toLowerCase().includes('finalizar')) {
         nextState = 'RevisandoPedido';
@@ -449,3 +450,4 @@ export default function Home() {
     </>
   );
 }
+

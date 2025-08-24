@@ -31,6 +31,10 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
   const canCancel = orderStatus === 'Recebido';
   const isOrderActive = !!orderStatus && orderStatus !== 'Finalizado' && orderStatus !== 'Cancelado';
 
+  const handleNewOrderClick = () => {
+    window.location.reload();
+  }
+
   return (
     <motion.div
       className="w-full bg-background rounded-lg border p-3 shadow-sm space-y-2"
@@ -39,16 +43,18 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
       animate="visible"
       layout
     >
-        {isOrderActive && onOpenOrderDetails ? (
-            <motion.div variants={buttonVariants}>
-                <Button variant="outline" className="w-full justify-start" onClick={onOpenOrderDetails}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Ver Meu Pedido
-                </Button>
-            </motion.div>
+        {isOrderActive ? (
+             onOpenOrderDetails && (
+                <motion.div variants={buttonVariants}>
+                    <Button variant="outline" className="w-full justify-start" onClick={onOpenOrderDetails}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Ver Meu Pedido
+                    </Button>
+                </motion.div>
+            )
         ) : (
             <motion.div variants={buttonVariants}>
-                <Button variant="outline" className="w-full justify-start" onClick={() => onSendMessage('Gostaria de ver o cardápio')}>
+                <Button variant="outline" className="w-full justify-start" onClick={handleNewOrderClick}>
                     <ArrowRight className="mr-2 h-4 w-4" />
                     Fazer Novo Pedido
                 </Button>
@@ -68,3 +74,4 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
 };
 
 export default OrderControlButtons;
+
