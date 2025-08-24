@@ -136,5 +136,3 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
 };
 
 export default ChatLayout;
-
-    

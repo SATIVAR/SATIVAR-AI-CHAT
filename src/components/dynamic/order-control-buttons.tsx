@@ -68,5 +68,3 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
 };
 
 export default OrderControlButtons;
-
-    

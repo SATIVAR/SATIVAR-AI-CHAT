@@ -80,7 +80,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const hasOnlyCompactCards = message.components && message.components.length > 0 && message.components.every(c => c.type === 'productCard');
 
-  if (isUser && (message.content.startsWith('Adicionado:') || message.content === 'ver_detalhes')) {
+  if (isUser && message.content.startsWith('Adicionado:')) {
     return null;
   }
 
@@ -146,5 +146,3 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 };
 
 export default MessageBubble;
-
-    
