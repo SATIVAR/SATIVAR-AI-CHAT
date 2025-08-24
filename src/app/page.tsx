@@ -236,7 +236,7 @@ export default function Home() {
     }
   }, [messages, order, isLoading, client, conversationState, activeOrderId]);
 
-  const handleAddToOrder = useCallback((productId: string) => {
+  const handleAddToOrder = (productId: string) => {
     if (!menuRef.current || !client) return;
     const product = menuRef.current.items.find(item => item.id === productId);
     if (!product) return;
@@ -272,7 +272,7 @@ export default function Home() {
     }, 2000);
 
 
-  }, [order, client, messages, activeOrderId]);
+  };
 
   const handleSubmitOrder = async (data: UserDetails) => {
     setIsLoading(true);
@@ -287,14 +287,7 @@ export default function Home() {
       const result = await submitOrder(fullClientDetails, submittedOrder);
 
       if (!result.success || !result.orderId) throw new Error("Order submission failed");
-
-      setActiveOrderId(result.orderId);
-      localStorage.setItem(ACTIVE_ORDER_ID_KEY, result.orderId);
-      localStorage.removeItem(CHAT_HISTORY_KEY);
-      localStorage.removeItem(ORDER_KEY);
-      previousStatusRef.current = 'Recebido';
-
-
+      
       const finalMessage: Message = {
         id: `final-${Date.now()}`,
         role: 'ai',
@@ -305,7 +298,14 @@ export default function Home() {
         ]
       };
       
+      // Now, set the state correctly
+      setActiveOrderId(result.orderId);
+      localStorage.setItem(ACTIVE_ORDER_ID_KEY, result.orderId);
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+      localStorage.removeItem(ORDER_KEY);
       updateChatHistory([finalMessage]);
+      
+      previousStatusRef.current = 'Recebido';
       updateOrder([]); 
       setIsAwaitingOrderDetails(false);
       setConversationState('AguardandoInicio');
