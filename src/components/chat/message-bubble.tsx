@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Message } from '@/lib/types';
+import { Message, Order } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,13 +22,15 @@ interface MessageBubbleProps {
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
   isLast: boolean;
+  activeOrderStatus: Order['status'] | null;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ 
   message,
   onSendMessage,
   onAddToOrder,
-  isLast
+  isLast,
+  activeOrderStatus
  }) => {
   const isUser = message.role === 'user';
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -118,7 +120,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                   case 'orderSummaryCard':
                                       return <OrderSummaryCard key={index} data={component} />;
                                   case 'orderControlButtons':
-                                      return <OrderControlButtons key={index} onSendMessage={onSendMessage} />;
+                                      return <OrderControlButtons key={index} onSendMessage={onSendMessage} orderStatus={activeOrderStatus} />;
                                   default:
                                       return null;
                               }

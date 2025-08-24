@@ -72,6 +72,8 @@ const QuickReplyButtonSchema = z.object({
 
 const OrderSummaryCardSchema = z.object({
     type: z.enum(['orderSummaryCard']).describe('The component type.'),
+    summary: z.string().optional().describe('A plain text summary of the order items, with each item on a new line.'),
+    total: z.number().optional().describe('The total amount of the order.'),
 });
 
 const OrderControlButtonsSchema = z.object({
@@ -120,9 +122,9 @@ Sua tarefa é guiar o cliente por um funil de vendas lógico, usando uma MÁQUIN
 4.  **Estado: 'RevisandoPedido'**
     *   **Contexto:** O cliente clicou para "Finalizar Pedido".
     *   **Sua Ação:** Verifique o 'currentOrder'.
-        *   **Se 'currentOrder' NÃO estiver vazio:** Responda com uma mensagem de confirmação e um componente 'orderSummaryCard'.
+        *   **Se 'currentOrder' NÃO estiver vazio:** Responda com uma mensagem de confirmação e um componente 'orderSummaryCard'. NÃO preencha os campos 'summary' e 'total', a UI do cliente fará isso.
         *   **Se 'currentOrder' ESTIVER vazio:** Responda educadamente que o carrinho está vazio e sugira ver o cardápio.
-    *   **Componentes Permitidos (com itens):** APENAS 'orderSummaryCard'.
+    *   **Componentes Permitidos (com itens):** APENAS 'orderSummaryCard' (sem campos preenchidos).
     *   **Componentes Permitidos (vazio):** APENAS 'quickReplyButton' para "Ver cardápio".
 
 5.  **Regra Geral de Cancelamento:**

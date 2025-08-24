@@ -4,13 +4,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, X, Check } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
+import { Order } from '@/lib/types';
 
 interface OrderControlButtonsProps {
   onSendMessage: (text: string) => void;
+  orderStatus?: Order['status'] | null; // Make status optional and nullable
 }
 
-const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage }) => {
+const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage, orderStatus }) => {
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -24,6 +26,9 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0 },
   };
+  
+  // Conditionally render the cancel button
+  const canCancel = orderStatus === 'Recebido';
 
   return (
     <motion.div
@@ -34,23 +39,20 @@ const OrderControlButtons: React.FC<OrderControlButtonsProps> = ({ onSendMessage
       layout
     >
         <motion.div variants={buttonVariants}>
-            <Button variant="outline" className="w-full justify-start" onClick={() => onSendMessage('Gostaria de ver outra categoria')}>
+            <Button variant="outline" className="w-full justify-start" onClick={() => onSendMessage('Gostaria de ver o cardápio')}>
                 <ArrowRight className="mr-2 h-4 w-4" />
-                Ver outra categoria
+                Fazer Novo Pedido
             </Button>
         </motion.div>
-        <motion.div variants={buttonVariants}>
-            <Button variant="destructive_outline" className="w-full justify-start" onClick={() => onSendMessage('quero cancelar meu pedido')}>
-                <X className="mr-2 h-4 w-4" />
-                Cancelar Pedido
-            </Button>
-        </motion.div>
-        <motion.div variants={buttonVariants}>
-            <Button className="w-full justify-start" onClick={() => onSendMessage('quero finalizar meu pedido')}>
-                <Check className="mr-2 h-4 w-4" />
-                Finalizar Pedido
-            </Button>
-        </motion.div>
+
+        {canCancel && (
+            <motion.div variants={buttonVariants}>
+                <Button variant="destructive_outline" className="w-full justify-start" onClick={() => onSendMessage('quero cancelar meu pedido')}>
+                    <X className="mr-2 h-4 w-4" />
+                    Cancelar Pedido
+                </Button>
+            </motion.div>
+        )}
     </motion.div>
   );
 };

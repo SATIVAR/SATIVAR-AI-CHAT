@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Message, OrderItem } from '@/lib/types';
+import { Message, Order } from '@/lib/types';
 import MessageBubble from './message-bubble';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatBubbleSkeleton } from './skeletons';
@@ -12,12 +12,14 @@ interface ChatMessagesProps {
   messages: Message[];
   onSendMessage: (text: string) => void;
   onAddToOrder: (productId: string) => void;
+  activeOrderStatus: Order['status'] | null;
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({ 
     messages, 
     onSendMessage,
     onAddToOrder,
+    activeOrderStatus
  }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -46,6 +48,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
               onSendMessage={onSendMessage}
               onAddToOrder={onAddToOrder}
               isLast={index === messages.length - 1}
+              activeOrderStatus={activeOrderStatus}
             />
           ))}
         </AnimatePresence>

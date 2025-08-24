@@ -39,6 +39,7 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ data }) => {
             initial="hidden"
             animate="visible"
             layout
+            className="w-full"
         >
             <Card className="w-full shadow-lg border-primary/20">
                 <CardHeader>

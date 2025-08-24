@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Message, OrderItem, UserDetails, Client } from '@/lib/types';
+import { Message, OrderItem, UserDetails, Client, Order } from '@/lib/types';
 import ChatMessages from './chat-messages';
 import ChatInput from './chat-input';
 import { Logo } from '@/components/icons/logo';
@@ -27,6 +27,7 @@ interface ChatLayoutProps {
   onUpdateClient: (data: Partial<Client>) => Promise<{success: boolean, error?: string}>;
   userDetails: Client | null;
   activeOrderId: string | null;
+  activeOrderStatus: Order['status'] | null;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -41,7 +42,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onCancelOrder,
   onUpdateClient,
   userDetails,
-  activeOrderId
+  activeOrderId,
+  activeOrderStatus
 }) => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const totalItems = order.reduce((acc, item) => acc + item.quantity, 0);
@@ -94,6 +96,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                 messages={messages}
                 onSendMessage={onSendMessage}
                 onAddToOrder={onAddToOrder}
+                activeOrderStatus={activeOrderStatus}
             />
             
             <footer className="w-full border-t border-border/80 bg-secondary/50 p-4 dark:bg-card">

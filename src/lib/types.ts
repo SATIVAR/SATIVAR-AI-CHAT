@@ -124,7 +124,6 @@ export type ConversationState =
     | 'AguardandoInicio'
     | 'MostrandoCategorias'
     | 'MostrandoProdutos'
-    | 'ItemAdicionado'
     | 'RevisandoPedido';
 
     

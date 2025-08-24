@@ -122,7 +122,9 @@ function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput[
         };
       case 'orderSummaryCard':
         return {
-            type: 'orderSummaryCard'
+            type: 'orderSummaryCard',
+            summary: comp.summary,
+            total: comp.total,
         };
       case 'orderControlButtons':
         return {

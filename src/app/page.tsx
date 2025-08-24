@@ -27,6 +27,7 @@ export default function Home() {
   
   const [client, setClient] = useState<Client | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [activeOrderStatus, setActiveOrderStatus] = useState<Order['status'] | null>(null);
   
   const menuRef = useRef<Menu | null>(null);
   const previousStatusRef = useRef<string | null>(null);
@@ -79,12 +80,16 @@ export default function Home() {
         if (!orderData) return;
 
         const currentStatus = orderData.status;
+        setActiveOrderStatus(currentStatus); // Store current status
         const previousStatus = previousStatusRef.current;
 
-        // Evita notificações duplicadas
+        // Evita notificações duplicadas no primeiro carregamento
         if (currentStatus === previousStatus) return;
 
         previousStatusRef.current = currentStatus;
+        // Evita notificar sobre o status "Recebido" que já é o inicial
+        if(currentStatus === 'Recebido') return;
+
 
         let statusMessage = '';
         switch (currentStatus) {
@@ -121,7 +126,7 @@ export default function Home() {
 
     return () => unsub();
 
-}, [activeOrderId, messages]);
+}, [activeOrderId, messages]); // Adicionado messages aqui para garantir que o histórico seja atual
 
 
   const handleLogin = async (data: UserDetails) => {
@@ -285,30 +290,43 @@ export default function Home() {
 
     try {
       const result = await submitOrder(fullClientDetails, submittedOrder);
-
       if (!result.success || !result.orderId) throw new Error("Order submission failed");
-      
+
+      // Generate the summary details
+      const summaryText = submittedOrder.map(item => `${item.quantity}x ${item.productName}`).join('\n');
+      const totalAmount = submittedOrder.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+      // Create a final confirmation message with a detailed summary card
       const finalMessage: Message = {
         id: `final-${Date.now()}`,
         role: 'ai',
         content: `Perfeito, ${data.name}! ✅ Seu pedido foi recebido com sucesso e já está na fila para preparo. Vou te manter atualizado por aqui sobre cada etapa!`,
         timestamp: new Date(),
         components: [
-          { type: 'quickReplyButton', label: 'Fazer novo pedido', payload: 'Gostaria de ver o cardápio' }
+          { 
+            type: 'orderSummaryCard',
+            summary: summaryText,
+            total: totalAmount,
+          },
+          { type: 'orderControlButtons' } // Will now conditionally show cancel button
         ]
       };
       
-      // Now, set the state correctly
+      // Correctly set the state for order tracking
       setActiveOrderId(result.orderId);
+      setActiveOrderStatus('Recebido'); // Set initial status
       localStorage.setItem(ACTIVE_ORDER_ID_KEY, result.orderId);
+      
+      // Clear previous history and set the new one with only the final message
       localStorage.removeItem(CHAT_HISTORY_KEY);
-      localStorage.removeItem(ORDER_KEY);
       updateChatHistory([finalMessage]);
       
-      previousStatusRef.current = 'Recebido';
+      // Clean up the current order from state and storage
       updateOrder([]); 
+      localStorage.removeItem(ORDER_KEY);
+      
       setIsAwaitingOrderDetails(false);
-      setConversationState('AguardandoInicio');
+      setConversationState('AguardandoInicio'); // Ready for a new order
 
     } catch (error) {
       console.error('Failed to submit order', error);
@@ -350,6 +368,7 @@ export default function Home() {
 
   const handleClearAfterOrder = () => {
     setActiveOrderId(null);
+    setActiveOrderStatus(null);
     previousStatusRef.current = null;
     localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
   };
@@ -396,6 +415,7 @@ export default function Home() {
       onUpdateClient={handleUpdateClient}
       userDetails={client}
       activeOrderId={activeOrderId}
+      activeOrderStatus={activeOrderStatus}
     />
   );
 }
