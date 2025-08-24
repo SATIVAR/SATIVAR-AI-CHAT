@@ -36,6 +36,63 @@ export default function Home() {
   const menuRef = useRef<Menu | null>(null);
   const previousStatusRef = useRef<string | null>(null);
 
+  const updateChatHistory = (updatedMessages: Message[]) => {
+    setMessages(updatedMessages);
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
+  }
+
+  const fetchGreeting = useCallback(async (clientName?: string) => {
+    setIsLoading(true);
+    setConversationState('AguardandoInicio');
+    const greeting = `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! Sou a UtópiZap, sua consultora gastronômica. Vamos montar um pedido delicioso hoje?`;
+    const initialMessage: Message = {
+      id: 'ai-greeting',
+      role: 'ai',
+      content: greeting,
+      timestamp: new Date(),
+      components: [
+        { type: 'quickReplyButton', label: 'Sim, ver cardápio', payload: 'Gostaria de ver o cardápio' }
+      ]
+    };
+    updateChatHistory([initialMessage]);
+    setIsLoading(false);
+  }, []);
+
+  const handleClearAfterOrder = useCallback(() => {
+    setActiveOrderId(null);
+    setActiveOrderSnapshot(null);
+    previousStatusRef.current = null;
+    localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
+    localStorage.removeItem(ACTIVE_ORDER_SNAPSHOT_KEY);
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    
+    if (client) {
+      fetchGreeting(client.name);
+    }
+  }, [client, fetchGreeting]);
+
+  const handleCancelOrder = useCallback(() => {
+    updateOrder([]);
+    localStorage.removeItem(ORDER_KEY);
+    setIsAwaitingOrderDetails(false);
+    
+    if(activeOrderId) {
+       handleClearAfterOrder();
+    }
+
+    const cancelMessage: Message = {
+      id: `ai-cancel-${Date.now()}`,
+      role: 'ai',
+      content: "Pedido cancelado. Se mudar de ideia, estou por aqui! 👋",
+      timestamp: new Date(),
+      components: [
+        { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
+      ]
+    };
+    updateChatHistory([cancelMessage]);
+    setConversationState('AguardandoInicio');
+  }, [activeOrderId, handleClearAfterOrder]);
+
 
   useEffect(() => {
     getKnowledgeBase().then(menu => menuRef.current = menu);
@@ -54,7 +111,6 @@ export default function Home() {
             setActiveOrderId(storedOrderId);
             if (storedOrderSnapshot) {
               const parsedSnapshot = JSON.parse(storedOrderSnapshot);
-              // Ensure timestamps are Date objects
               const serializableOrderData = {
                 ...parsedSnapshot,
                 createdAt: new Date(parsedSnapshot.createdAt),
@@ -70,8 +126,8 @@ export default function Home() {
             timestamp: new Date(msg.timestamp),
           }));
           setMessages(parsedMessages);
-          if (!storedOrderId) { // Only set state if not tracking an order
-            setConversationState('MostrandoCategorias'); // Assume they want to continue
+          if (!storedOrderId) {
+            setConversationState('MostrandoCategorias');
           }
         } else if (!storedOrderId) {
           fetchGreeting(parsedClient.name);
@@ -89,7 +145,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchGreeting]);
 
   useEffect(() => {
     if (!activeOrderId) return;
@@ -148,7 +204,6 @@ export default function Home() {
                   { type: 'quickReplyButton', label: 'Ver Detalhes do Pedido', payload: 'ver_detalhes' }
                 ]
             };
-             // Use a callback with setMessages to ensure you have the latest state
             setMessages(prevMessages => [...prevMessages, aiMessage]);
             localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify([...messages, aiMessage]));
              toast({
@@ -160,7 +215,7 @@ export default function Home() {
 
     return () => unsub();
 
-}, [activeOrderId, messages, toast]); 
+}, [activeOrderId, messages, toast, handleClearAfterOrder]); 
 
 
   const handleLogin = async (data: UserDetails) => {
@@ -184,70 +239,11 @@ export default function Home() {
     }
   };
   
-  const fetchGreeting = async (clientName?: string) => {
-    setIsLoading(true);
-    setConversationState('AguardandoInicio');
-    const greeting = `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! Sou a UtópiZap, sua consultora gastronômica. Vamos montar um pedido delicioso hoje?`;
-    const initialMessage: Message = {
-      id: 'ai-greeting',
-      role: 'ai',
-      content: greeting,
-      timestamp: new Date(),
-      components: [
-        { type: 'quickReplyButton', label: 'Sim, ver cardápio', payload: 'Gostaria de ver o cardápio' }
-      ]
-    };
-    updateChatHistory([initialMessage]);
-    setIsLoading(false);
-  };
-
   const updateOrder = (updatedOrder: OrderItem[]) => {
       setOrder(updatedOrder);
       localStorage.setItem(ORDER_KEY, JSON.stringify(updatedOrder));
   }
 
-
-  const updateChatHistory = (updatedMessages: Message[]) => {
-    setMessages(updatedMessages);
-    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(updatedMessages));
-  }
-
-  const handleClearAfterOrder = () => {
-    setActiveOrderId(null);
-    setActiveOrderSnapshot(null);
-    previousStatusRef.current = null;
-    localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
-    localStorage.removeItem(ACTIVE_ORDER_SNAPSHOT_KEY);
-    localStorage.removeItem(CHAT_HISTORY_KEY);
-    
-    if (client) {
-      fetchGreeting(client.name);
-    }
-  };
-
-
-  const handleCancelOrder = useCallback(() => {
-    updateOrder([]);
-    localStorage.removeItem(ORDER_KEY);
-    setIsAwaitingOrderDetails(false);
-    
-    if(activeOrderId) {
-       // TODO: Call backend to set order status to 'Cancelled'
-       handleClearAfterOrder();
-    }
-
-    const cancelMessage: Message = {
-      id: `ai-cancel-${Date.now()}`,
-      role: 'ai',
-      content: "Pedido cancelado. Se mudar de ideia, estou por aqui! 👋",
-      timestamp: new Date(),
-      components: [
-        { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
-      ]
-    };
-    updateChatHistory([cancelMessage]);
-    setConversationState('AguardandoInicio');
-  }, [activeOrderId, client]);
 
   const handleSendMessage = useCallback(async (text: string, stateOverride?: ConversationState) => {
     if (!text.trim() || isLoading || !client) return;

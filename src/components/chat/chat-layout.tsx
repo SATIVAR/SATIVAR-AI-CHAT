@@ -63,7 +63,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                 <div className="flex-grow">
                     <h1 className="text-xl font-bold text-card-foreground">UtópiZap</h1>
                     <p className={cn("text-sm text-muted-foreground transition-opacity duration-300", isLoading ? "opacity-100" : "opacity-70")}>
-                        {isLoading ? (
+                        {isLoading && !activeOrderId ? (
                             <span className="flex items-center gap-1.5">
                                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-green-500 [animation-delay:-0.3s]"></span>
                                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-green-500 [animation-delay:-0.15s]"></span>
