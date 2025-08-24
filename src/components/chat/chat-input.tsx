@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SendHorizonal } from 'lucide-react';
+import { SendHorizonal, Lock } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 
@@ -28,7 +28,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
     <form onSubmit={handleSubmit} className="relative flex items-center w-full">
       <Input
         type="text"
-        placeholder="Diga olá para começar..."
+        placeholder={isLoading ? "Aguardando andamento do pedido..." : "Diga olá para começar..."}
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
         onKeyDown={(e) => {
@@ -41,7 +41,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
         autoComplete="off"
       />
       <AnimatePresence>
-        {inputText.trim() && (
+        {isLoading ? (
+             <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.5, opacity: 0 }}
+                className="absolute right-1.5 flex items-center"
+            >
+                <Button type="submit" size="icon" className="rounded-full w-9 h-9" disabled={true}>
+                    <Lock size={18} />
+                    <span className="sr-only">Bloqueado</span>
+                </Button>
+            </motion.div>
+        ) : inputText.trim() && (
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

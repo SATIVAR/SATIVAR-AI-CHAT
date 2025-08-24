@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import UserDetailsForm from '../dynamic/user-details-form';
 import { ThemeToggle } from '../theme-toggle';
 import { Button } from '../ui/button';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, PackageCheck } from 'lucide-react';
 import CartModal from './cart-modal';
 import { UserMenu } from './user-menu';
 
@@ -26,6 +26,7 @@ interface ChatLayoutProps {
   onCancelOrder: () => void;
   onUpdateClient: (data: Partial<Client>) => Promise<{success: boolean, error?: string}>;
   userDetails: Client | null;
+  activeOrderId: string | null;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -39,7 +40,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onUpdateOrder,
   onCancelOrder,
   onUpdateClient,
-  userDetails
+  userDetails,
+  activeOrderId
 }) => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const totalItems = order.reduce((acc, item) => acc + item.quantity, 0);
@@ -65,12 +67,17 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
 
                                 <span className="ml-1">digitando...</span>
                             </span>
+                        ) : activeOrderId ? (
+                            <span className="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400">
+                                <PackageCheck size={16} className="animate-pulse" />
+                                Acompanhando seu pedido...
+                            </span>
                         ) : "online"}
                     </p>
                 </div>
                  <div className="flex items-center gap-1">
                     <ThemeToggle />
-                    <Button variant="ghost" size="icon" className="relative" onClick={() => setIsCartOpen(true)}>
+                    <Button variant="ghost" size="icon" className="relative" onClick={() => setIsCartOpen(true)} disabled={!!activeOrderId}>
                         <ShoppingCart className="h-6 w-6" />
                         {totalItems > 0 && (
                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
@@ -98,7 +105,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                     />
                 ) : (
                     <div className="relative">
-                        <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
+                        <ChatInput onSendMessage={onSendMessage} isLoading={isLoading || !!activeOrderId} />
                     </div>
                 )}
             </footer>
