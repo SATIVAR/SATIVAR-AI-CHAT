@@ -5,6 +5,8 @@ import { Client } from '@/lib/types';
 import ClientsDataTable from '@/components/admin/clients/clients-data-table';
 import { revalidatePath } from 'next/cache';
 
+export const revalidate = 0;
+
 export default async function ClientsPage({
   searchParams,
 }: {

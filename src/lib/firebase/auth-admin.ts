@@ -1,5 +1,6 @@
 
 'use server';
+export const revalidate = 0;
 
 import bcrypt from 'bcryptjs';
 import { db } from './admin';
