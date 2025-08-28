@@ -61,7 +61,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                     <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-card bg-green-500" />
                 </div>
                 <div className="flex-grow">
-                    <h1 className="text-xl font-bold text-card-foreground">UtópiZap</h1>
+                    <h1 className="text-xl font-bold text-card-foreground">SatiZap</h1>
                     <p className={cn("text-sm text-muted-foreground transition-opacity duration-300", isLoading ? "opacity-100" : "opacity-70")}>
                         {isLoading && !activeOrderId ? (
                             <span className="flex items-center gap-1.5">

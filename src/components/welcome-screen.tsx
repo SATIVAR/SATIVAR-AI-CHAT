@@ -62,8 +62,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, isLoading }) => 
             <div className="rounded-2xl border bg-card/80 p-8 text-center shadow-2xl backdrop-blur-sm">
                 <motion.div variants={itemVariants} className="mb-6 flex flex-col items-center gap-4">
                     <Logo className="h-20 w-20 text-primary" />
-                    <h1 className="text-3xl font-bold text-card-foreground">Bem-vindo(a) ao UtópiZap!</h1>
-                    <p className="text-muted-foreground">Para começar, precisamos de algumas informações para agilizar seu pedido.</p>
+                    <h1 className="text-3xl font-bold text-card-foreground">Bem-vindo(a) ao SatiZap!</h1>
+                    <p className="text-muted-foreground">Para começar, precisamos de algumas informações para agilizar seu orçamento.</p>
                 </motion.div>
                 
                 <Form {...form}>
@@ -105,7 +105,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, isLoading }) => 
                         <motion.div variants={itemVariants}>
                             <Button type="submit" className="w-full h-12 text-lg" disabled={isLoading}>
                                 {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <MessageSquareHeart className="mr-2 h-5 w-5"/>}
-                                Iniciar Pedido
+                                Iniciar Orçamento
                             </Button>
                         </motion.div>
                     </motion.form>

@@ -49,14 +49,14 @@ export default function Home() {
   const fetchGreeting = useCallback(async (clientName?: string) => {
     setIsLoading(true);
     setConversationState('AguardandoInicio');
-    const greeting = `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! Sou a UtópiZap, sua consultora gastronômica. Vamos montar um pedido delicioso hoje?`;
+    const greeting = `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao SatiZap! Sou seu consultor especialista. Vamos montar um orçamento hoje?`;
     const initialMessage: Message = {
       id: 'ai-greeting',
       role: 'ai',
       content: greeting,
       timestamp: new Date(),
       components: [
-        { type: 'quickReplyButton', label: 'Sim, ver cardápio', payload: 'Gostaria de ver o cardápio' }
+        { type: 'quickReplyButton', label: 'Sim, ver catálogo', payload: 'Gostaria de ver o catálogo de produtos' }
       ]
     };
     updateChatHistory([initialMessage]);
@@ -92,7 +92,7 @@ export default function Home() {
       content: "Pedido cancelado. Se mudar de ideia, estou por aqui! 👋",
       timestamp: new Date(),
       components: [
-        { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o cardápio' }
+        { type: 'quickReplyButton', label: 'Começar de novo', payload: 'Gostaria de ver o catálogo de produtos' }
       ]
     };
     updateChatHistory([cancelMessage]);
@@ -185,7 +185,7 @@ export default function Home() {
         let statusMessage = '';
         switch (currentStatus) {
             case 'Em Preparo':
-                statusMessage = 'Boas notícias! Seu pedido já está sendo preparado com todo o carinho. 👨‍🍳';
+                statusMessage = 'Boas notícias! Seu orçamento já está sendo preparado com todo o carinho. 👨‍🍳';
                 break;
             case 'Pronto para Entrega':
                 statusMessage = 'Seu pedido está pronto para entrega e sairá em breve! 🚀';
@@ -271,7 +271,7 @@ export default function Home() {
     setIsLoading(true);
 
     let nextState: ConversationState = stateOverride || conversationState;
-    if (text.toLowerCase().includes('cardápio') || text.toLowerCase().includes('outra categoria') || text.toLowerCase().includes('ver outras categorias')) {
+    if (text.toLowerCase().includes('catálogo') || text.toLowerCase().includes('outra categoria') || text.toLowerCase().includes('ver outras categorias')) {
         nextState = 'MostrandoCategorias';
     } else if (text.toLowerCase().includes('finalizar')) {
         nextState = 'RevisandoPedido';

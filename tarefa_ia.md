@@ -42,7 +42,68 @@ A server action principal (getAiResponse) será modificada para, no início de c
 Fase 5: Adaptação do Frontend e do Fluxo de Usuário (Next.js)
 As mudanças na lógica de negócios exigirão ajustes na interface do usuário.
 Componente de Upload de Arquivos:
-A interface de chat será atualizada para incluir um botão ou área de upload, permitindo que o usuário envie uma imagem (receita, lista, etc.).
+Plano de Ação: Implementação do Upload Guiado pela IA
+Sumário Executivo
+O objetivo é refinar o fluxo de interação para que o upload de documentos não seja iniciado por uma ação constante do usuário (um botão sempre visível), mas sim por uma solicitação explícita da IA quando ela identificar a necessidade. Isso transforma a IA em uma participante ativa que conduz o processo de orçamento, melhorando a experiência do usuário e reduzindo a ambiguidade na conversa.
+Fase 1: Aprimoramento da Capacidade de Raciocínio da IA
+O primeiro passo é tornar a IA "consciente" de quando ela precisa de um documento para continuar.
+Treinamento de Reconhecimento de Intenção:
+O prompt de engenharia do flow principal do Genkit será significativamente aprimorado. Ele receberá instruções claras para identificar "gatilhos" na conversa do usuário.
+Gatilhos: Frases como "gostaria de fazer um orçamento", "tenho uma receita médica", "preciso de ajuda com minha prescrição", "quero ver os preços dos meus produtos" serão mapeadas para uma intenção de "iniciar orçamento".
+Criação de um Novo Estado Conversacional:
+Quando a IA reconhece a intenção de "iniciar orçamento", sua próxima ação não será mais uma resposta de texto genérica. Sua instrução será gerar um tipo específico de componente na sua resposta JSON.
+O Componente uploadRequest: Definiremos um novo tipo no schema de saída Zod da IA, como por exemplo, "uploadRequest". A resposta JSON da IA, em vez de um simples texto, será algo como:
+code
+JSON
+{
+  "components": [
+    { 
+      "type": "textMessage", 
+      "content": "Com certeza! Para que eu possa montar seu orçamento, preciso que me envie uma foto da sua receita ou lista de produtos." 
+    },
+    {
+      "type": "uploadRequest",
+      "label": "Clique aqui para enviar o arquivo"
+    }
+  ]
+}
+Justificativa: Isso mantém a arquitetura de renderização dinâmica, onde o frontend é "burro" e apenas renderiza o que a IA manda. A inteligência para decidir quando pedir o upload reside inteiramente no modelo de linguagem.
+Fase 2: Adaptação da Interface do Usuário (Frontend)
+O frontend precisa ser capaz de interpretar e renderizar essa nova instrução da IA.
+Renderização Condicional do Componente de Upload:
+O componente principal do chat em Next.js, que mapeia os tipos de componentes do JSON para componentes React, será atualizado. Ele agora terá uma lógica para o tipo uploadRequest.
+Ao receber esse tipo, em vez de um botão genérico na barra de digitação, ele renderizará um componente de upload específico dentro da própria linha de diálogo do chat. Este componente conterá o texto de instrução ("Clique aqui...") e a funcionalidade de upload.
+Após o envio, este componente pode ser desativado ou substituído por uma mensagem de "Arquivo enviado, processando...", garantindo que o usuário não possa enviar múltiplos arquivos para a mesma solicitação.
+Tratamento do Estado de "Aguardando Upload":
+A interface do usuário entrará em um estado de "espera". A caixa de texto para digitação pode permanecer ativa, mas a lógica da aplicação estará ciente de que a próxima ação esperada é um upload.
+Se o usuário digitar outra mensagem em vez de enviar o arquivo, o histórico da conversa (que inclui o pedido de upload da IA) será reenviado ao modelo, que será instruído a lembrar gentilmente ao usuário: "Para prosseguir com o orçamento, ainda preciso do documento."
+Fase 3: Orquestração do Fluxo de Dados (Backend)
+A server action que gerencia a comunicação com a IA precisa ser adaptada para este novo fluxo assíncrono.
+Diferenciação de Requisições:
+A server action (getAiResponse) agora lidará com dois tipos principais de requisição do frontend:
+Requisição de Texto: Uma mensagem padrão do usuário.
+Requisição com Mídia: Uma requisição que contém o arquivo de imagem (FormData).
+Processo da Requisição com Mídia:
+Quando a server action detecta que a requisição contém um arquivo de imagem, ela executará a seguinte sequência:
+a. Não envia a imagem para a IA.
+b. Primeiro, envia a imagem para o serviço de OCR (Google Cloud Vision).
+c. Recebe a string de texto extraído do OCR.
+d. Constrói um novo "prompt de sistema" ou anexa o texto extraído à mensagem do usuário para a IA. Por exemplo: "O usuário enviou o seguinte documento para orçamento. O texto extraído é: '[texto do OCR aqui]'. Por favor, analise, encontre os produtos e gere o orçamento."
+e. Chama o flow do Genkit com este novo contexto. Agora a IA tem o material de que precisava para trabalhar.
+f. A IA então usa a ferramenta findAssociationProducts (como planejado anteriormente) para buscar os produtos no WordPress e, finalmente, retorna o JSON com os componentes do orçamento.
+Resumo do Novo Fluxo de Interação do Usuário
+Usuário: "Olá, gostaria de fazer um orçamento."
+Backend (IA): Reconhece a intenção. Retorna um JSON com um textMessage e um componente uploadRequest.
+Frontend: Renderiza a mensagem da IA e, logo abaixo, um botão de upload dentro do chat.
+Usuário: Clica no botão e seleciona a imagem da sua receita.
+Frontend: Envia a imagem para a server action no backend. Exibe um status de "Processando sua receita...".
+Backend:
+Recebe a imagem.
+Envia para o OCR e obtém o texto.
+Envia o texto para a IA.
+A IA analisa o texto, chama a ferramenta para buscar produtos no WordPress e formula o orçamento.
+Retorna um novo JSON, desta vez com os componentes do orçamento (BudgetItem, TotalAmount, etc.).
+Frontend: Recebe o novo JSON e substitui a mensagem de "Processando" pelo orçamento final, renderizado dinamicamente.
 Refatoração da Server Action Principal:
 A lógica da server action (getAiResponse) será orquestradora do novo fluxo:
 a. Receber dados do formulário (mensagem de texto e arquivo de imagem).
