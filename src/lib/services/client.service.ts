@@ -2,27 +2,35 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { Client, Address } from '@prisma/client';
+import { Client } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
+import { AddressDetails } from '@/lib/types';
+
+// Temporary default association ID - should be replaced with proper tenant resolution
+const DEFAULT_ASSOCIATION_ID = 'cmevpxdbf0000tmmw9106u0s2';
 
 // Tipos para garantir a consistência dos dados de entrada
-type ClientInput = Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'isActive'> & {
-    address?: Omit<Address, 'id' | 'clientId'>
+type ClientCreateInput = {
+    name: string;
+    phone: string;
+    address?: AddressDetails | null;
+    associationId?: string;  // Made optional with default
+    lastOrderAt?: Date;      // Made optional with default
 };
+type ClientInput = Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>;
 type ClientUpdateInput = Partial<ClientInput>;
 
 
-export async function findClientByPhone(phone: string): Promise<(Client & { address: Address | null }) | null> {
+export async function findClientByPhone(phone: string): Promise<Client | null> {
     if (!phone) return null;
     
     const client = await prisma.client.findUnique({
-        where: { phone },
-        include: { address: true }
+        where: { phone }
     });
     return client;
 }
 
-export async function createClient(clientData: ClientInput): Promise<{ success: boolean, data?: Client, error?: string }> {
+export async function createClient(clientData: ClientCreateInput): Promise<{ success: boolean, data?: Client, error?: string }> {
     try {
         const { address, ...clientInfo } = clientData;
         
@@ -36,12 +44,9 @@ export async function createClient(clientData: ClientInput): Promise<{ success: 
         const newClient = await prisma.client.create({
             data: {
                 ...clientInfo,
-                address: address ? {
-                    create: address
-                } : undefined,
-            },
-            include: {
-                address: true,
+                associationId: clientInfo.associationId || DEFAULT_ASSOCIATION_ID,
+                lastOrderAt: clientInfo.lastOrderAt || new Date(),
+                address: address || undefined,
             }
         });
         
@@ -70,12 +75,7 @@ export async function updateClient(id: string, clientData: ClientUpdateInput): P
             where: { id },
             data: {
                 ...clientInfo,
-                address: address ? {
-                    upsert: { // Cria ou atualiza o endereço
-                        create: address,
-                        update: address,
-                    }
-                } : undefined
+                address: address || undefined
             }
         });
         return { success: true };
@@ -87,23 +87,24 @@ export async function updateClient(id: string, clientData: ClientUpdateInput): P
 
 
 export const getClients = unstable_cache(
-    async ({ searchQuery = '', page = 1, limit = 10 }: { searchQuery?: string; page?: number; limit?: number; }) => {
+    async ({ searchQuery = '', page = 1, limit = 10, associationId }: { searchQuery?: string; page?: number; limit?: number; associationId?: string; }) => {
+        const targetAssociationId = associationId || DEFAULT_ASSOCIATION_ID;
         
-        const whereClause = searchQuery ? {
+        const whereClause = {
             isActive: true,
-            OR: [
-                { name: { contains: searchQuery, mode: 'insensitive' } },
-                { phone: { contains: searchQuery } }
-            ]
-        } : { isActive: true };
+            associationId: targetAssociationId,
+            ...(searchQuery ? {
+                OR: [
+                    { name: { contains: searchQuery, mode: 'insensitive' } },
+                    { phone: { contains: searchQuery } }
+                ]
+            } : {})
+        };
 
         const totalClients = await prisma.client.count({ where: whereClause });
         
         const clients = await prisma.client.findMany({
             where: whereClause,
-            include: {
-                address: true,
-            },
             orderBy: {
                 name: 'asc'
             },
@@ -112,7 +113,7 @@ export const getClients = unstable_cache(
         });
         
         return {
-            clients: clients as (Client & { address: Address | null })[],
+            clients,
             total: totalClients,
             page,
             limit,

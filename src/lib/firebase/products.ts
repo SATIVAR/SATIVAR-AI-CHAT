@@ -15,8 +15,21 @@ const toSerializableDate = (timestamp: any): Date | null => {
     return new Date(timestamp);
 };
 
+// Check if Firebase is available (avoid build-time errors)
+const isFirebaseAvailable = () => {
+  try {
+    return db && typeof db.collection === 'function';
+  } catch {
+    return false;
+  }
+};
+
 
 export async function createProduct(data: Partial<Product>): Promise<{ success: boolean; error?: string }> {
+  if (!isFirebaseAvailable()) {
+    return { success: false, error: 'Firebase not available' };
+  }
+  
   try {
     if (!data.name || !data.price || !data.categoryId) {
       return { success: false, error: 'Nome, preço e categoria são obrigatórios.' };
@@ -36,6 +49,10 @@ export async function createProduct(data: Partial<Product>): Promise<{ success: 
 }
 
 export async function updateProduct(id: string, data: Partial<Product>): Promise<{ success: boolean; error?: string }> {
+  if (!isFirebaseAvailable()) {
+    return { success: false, error: 'Firebase not available' };
+  }
+  
   try {
     await db.collection('products').doc(id).update({
       ...data,
@@ -50,6 +67,10 @@ export async function updateProduct(id: string, data: Partial<Product>): Promise
 
 
 export async function deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
+  if (!isFirebaseAvailable()) {
+    return { success: false, error: 'Firebase not available' };
+  }
+  
   try {
     // In a real-world scenario, you might want to check if this product is in any active orders
     // before deleting, but for now a soft-delete (or hard) is fine.
@@ -63,6 +84,15 @@ export async function deleteProduct(id: string): Promise<{ success: boolean; err
 }
 
 export async function getProducts(options: { categoryId?: string; page?: number; limit?: number }) {
+  if (!isFirebaseAvailable()) {
+    console.warn('Firebase not available - returning empty products');
+    return {
+      products: [],
+      total: 0,
+      totalPages: 0,
+    };
+  }
+  
   const { categoryId, page = 1, limit = 10 } = options;
   
   let query: FirebaseFirestore.Query = db.collection('products').where('isActive', '==', true);

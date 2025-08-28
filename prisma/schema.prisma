@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,77 +7,173 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Owner {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  createdAt    DateTime @default(now())
+model Association {
+  id              String            @id @default(cuid())
+  name            String
+  subdomain       String            @unique
+  wordpressUrl    String
+  wordpressAuth   String            @db.LongText
+  promptContext   String?           @db.LongText
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  Client          Client[]
+  Owner           Owner[]
+  Patient         Patient[]
+  Product         Product[]
+  ProductCategory ProductCategory[]
 }
 
 model Client {
-  id          String    @id @default(cuid())
-  name        String
-  phone       String    @unique
-  address     Json?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  lastOrderAt DateTime  @default(now()) @updatedAt
-  orders      Order[]
+  id            String      @id
+  name          String
+  phone         String      @unique
+  address       String?     @db.LongText
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  lastOrderAt   DateTime    @default(now())
+  associationId String
+  Association   Association @relation(fields: [associationId], references: [id])
+  Order         Order[]
+
+  @@index([associationId], map: "Client_associationId_fkey")
 }
 
-model ProductCategory {
-  id                 String    @id @default(cuid())
-  name               String
-  description        String    @db.Text
-  order              Int       @default(0)
-  isActive           Boolean   @default(true)
-  imageUrl           String?
-  nextStepSuggestion String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @default(now()) @updatedAt
-  products           Product[]
+model Conversation {
+  id          String              @id
+  patientId   String
+  status      Conversation_status @default(com_ia)
+  attendantId String?
+  startedAt   DateTime            @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime
+  Patient     Patient             @relation(fields: [patientId], references: [id])
+  Message     Message[]
+
+  @@index([patientId], map: "Conversation_patientId_fkey")
 }
 
-model Product {
-  id          String           @id @default(cuid())
-  name        String
-  description String           @db.Text
-  price       Float
-  imageUrl    String?
-  isActive    Boolean          @default(true)
-  isFeatured  Boolean          @default(false)
-  category    ProductCategory  @relation(fields: [categoryId], references: [id])
-  categoryId  String
-  orderItems  OrderItem[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @default(now()) @updatedAt
+model Message {
+  id             String             @id
+  conversationId String
+  content        String             @db.Text
+  senderType     Message_senderType
+  senderId       String?
+  timestamp      DateTime           @default(now())
+  metadata       String?            @db.LongText
+  isRead         Boolean            @default(false)
+  Conversation   Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId], map: "Message_conversationId_fkey")
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  client      Client      @relation(fields: [clientId], references: [id])
+  id          String       @id
   clientId    String
-  clientInfo  Json
+  clientInfo  String       @db.LongText
   totalAmount Float
-  status      OrderStatus @default(Recebido)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @default(now()) @updatedAt
-  items       OrderItem[]
+  status      Order_status @default(Recebido)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now())
+  Client      Client       @relation(fields: [clientId], references: [id])
+  OrderItem   OrderItem[]
+
+  @@index([clientId], map: "Order_clientId_fkey")
 }
 
 model OrderItem {
-  id          String  @id @default(cuid())
-  order       Order   @relation(fields: [orderId], references: [id])
+  id          String  @id
   orderId     String
-  product     Product @relation(fields: [productId], references: [id])
   productId   String
   productName String
   quantity    Int
   unitPrice   Float
+  Order       Order   @relation(fields: [orderId], references: [id])
+  Product     Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId], map: "OrderItem_orderId_fkey")
+  @@index([productId], map: "OrderItem_productId_fkey")
 }
 
-enum OrderStatus {
+model Owner {
+  id            String      @id
+  email         String      @unique
+  passwordHash  String
+  name          String
+  createdAt     DateTime    @default(now())
+  associationId String
+  Association   Association @relation(fields: [associationId], references: [id])
+
+  @@index([associationId], map: "Owner_associationId_fkey")
+}
+
+model Patient {
+  id            String         @id
+  name          String
+  whatsapp      String         @unique
+  email         String?
+  isActive      Boolean        @default(true)
+  associationId String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime
+  Conversation  Conversation[]
+  Association   Association    @relation(fields: [associationId], references: [id])
+
+  @@index([associationId], map: "Patient_associationId_fkey")
+}
+
+model Product {
+  id              String          @id
+  name            String
+  description     String          @db.Text
+  price           Float
+  imageUrl        String?
+  isActive        Boolean         @default(true)
+  isFeatured      Boolean         @default(false)
+  categoryId      String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @default(now())
+  associationId   String
+  OrderItem       OrderItem[]
+  Association     Association     @relation(fields: [associationId], references: [id])
+  ProductCategory ProductCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([associationId], map: "Product_associationId_fkey")
+  @@index([categoryId], map: "Product_categoryId_fkey")
+}
+
+model ProductCategory {
+  id                 String      @id
+  name               String
+  description        String      @db.Text
+  order              Int         @default(0)
+  isActive           Boolean     @default(true)
+  imageUrl           String?
+  nextStepSuggestion String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @default(now())
+  associationId      String
+  Product            Product[]
+  Association        Association @relation(fields: [associationId], references: [id])
+
+  @@index([associationId], map: "ProductCategory_associationId_fkey")
+}
+
+enum Conversation_status {
+  com_ia
+  fila_humano
+  com_humano
+  resolvida
+}
+
+enum Message_senderType {
+  paciente
+  ia
+  atendente
+}
+
+enum Order_status {
   Recebido
   Em_Preparo
   Pronto_para_Entrega

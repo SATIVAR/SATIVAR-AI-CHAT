@@ -1,5 +1,5 @@
 
-import { Product as PrismaProduct, ProductCategory as PrismaCategory, OrderStatus } from '@prisma/client';
+import { Product as PrismaProduct, ProductCategory as PrismaCategory, OrderStatus, Patient as PrismaPatient, Conversation as PrismaConversation, Message as PrismaMessage, ConversationStatus, SenderType, Association as PrismaAssociation } from '@prisma/client';
 
 export interface ProductCategory extends PrismaCategory {}
 
@@ -64,6 +64,7 @@ export interface AddressDetails {
   state?: string;
   zipCode?: string;
   reference?: string;
+  [key: string]: any; // Index signature for Prisma JsonValue compatibility
 }
 
 export interface UserDetails {
@@ -105,3 +106,55 @@ export type ConversationState =
     | 'MostrandoCategorias'
     | 'MostrandoProdutos'
     | 'RevisandoPedido';
+
+// SATIZAP - Novos tipos para o sistema de conversa
+export interface Patient extends PrismaPatient {}
+
+export interface PatientFormData {
+  name: string;
+  whatsapp: string;
+  email?: string;
+}
+
+export interface ConversationMessage extends Omit<PrismaMessage, 'metadata'> {
+  metadata?: {
+    components?: DynamicComponentData[];
+    handoffReason?: string;
+    prescriptionImageUrl?: string;
+    [key: string]: any;
+  };
+}
+
+export interface ConversationData extends Omit<PrismaConversation, 'messages'> {
+  patient: Patient;
+  messages: ConversationMessage[];
+  attendant?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface HandoffRequest {
+  conversationId: string;
+  reason: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
+export interface AttendantSession {
+  id: string;
+  name: string;
+  isOnline: boolean;
+  activeConversations: string[];
+}
+
+// Multi-tenant types
+export interface Association extends PrismaAssociation {
+  wordpressAuth: {
+    apiKey: string;
+    username: string;
+    password: string;
+    [key: string]: any;
+  };
+}
+
+

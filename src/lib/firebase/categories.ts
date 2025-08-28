@@ -12,8 +12,21 @@ const toSerializableDate = (timestamp: any): Date | null => {
     return new Date(timestamp);
 };
 
+// Check if Firebase is available (avoid build-time errors)
+const isFirebaseAvailable = () => {
+  try {
+    return db && typeof db.collection === 'function';
+  } catch {
+    return false;
+  }
+};
 
 export async function getAllCategories(): Promise<ProductCategory[]> {
+  if (!isFirebaseAvailable()) {
+    console.warn('Firebase not available - returning empty categories');
+    return [];
+  }
+  
   const snapshot = await db.collection('categories').where('isActive', '==', true).orderBy('order').get();
   if (snapshot.empty) {
     return [];
@@ -31,6 +44,10 @@ export async function getAllCategories(): Promise<ProductCategory[]> {
 
 
 export async function createCategory(data: Partial<ProductCategory>): Promise<{success: boolean, error?: string}> {
+  if (!isFirebaseAvailable()) {
+    return { success: false, error: 'Firebase not available' };
+  }
+  
   try {
     if (!data.name) {
       return { success: false, error: 'O nome da categoria é obrigatório.' };
@@ -49,6 +66,10 @@ export async function createCategory(data: Partial<ProductCategory>): Promise<{s
 }
 
 export async function updateCategory(id: string, data: Partial<ProductCategory>): Promise<{success: boolean, error?: string}> {
+  if (!isFirebaseAvailable()) {
+    return { success: false, error: 'Firebase not available' };
+  }
+  
   try {
     await db.collection('categories').doc(id).update({
       ...data,
@@ -62,6 +83,10 @@ export async function updateCategory(id: string, data: Partial<ProductCategory>)
 }
 
 export async function deleteCategory(id: string): Promise<{success: boolean, error?: string}> {
+  if (!isFirebaseAvailable()) {
+    return { success: false, error: 'Firebase not available' };
+  }
+  
    try {
     // Pro-tip: Check if there are products associated with this category before deleting.
     const productsSnapshot = await db.collection('products').where('categoryId', '==', id).limit(1).get();

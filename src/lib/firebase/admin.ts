@@ -6,6 +6,11 @@ config(); // Carrega as variáveis de ambiente do .env
 import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
 
+// Check if we're in build time and skip Firebase initialization
+if (process.env.NODE_ENV === 'production' && !process.env.FIREBASE_CLIENT_EMAIL) {
+  console.warn('Firebase credentials not available during build - this is expected');
+}
+
 // Este é o objeto que constrói as credenciais a partir do seu .env.local
 const serviceAccount = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID as string,
@@ -21,8 +26,12 @@ function initializeAdminApp() {
     return admin.app();
   }
 
-  // Verifica se todas as variáveis de ambiente necessárias estão presentes
+  // Skip initialization during build time if credentials are not available
   if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'preview') {
+      console.warn('Firebase credentials not available during build - skipping initialization');
+      return null as any;
+    }
     throw new Error('As credenciais do Firebase Admin não foram encontradas nas variáveis de ambiente. Verifique seu arquivo .env');
   }
 

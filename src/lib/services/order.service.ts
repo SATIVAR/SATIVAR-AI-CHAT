@@ -38,7 +38,7 @@ export async function createOrder(order: OrderCreateInput): Promise<string> {
             clientAddress: clientInfo.address ? `${clientInfo.address.street || ''}, ${clientInfo.address.number || ''}` : 'Retirada no local',
             totalAmount,
             status: 'Recebido', // Status inicial
-            items: {
+            OrderItem: {
                 create: items.map(item => ({
                     productId: item.productId,
                     productName: item.productName,
@@ -69,7 +69,7 @@ export async function getOrders(): Promise<Order[]> {
             }
         },
         include: {
-            items: true // Inclui os itens do pedido
+            OrderItem: true // Inclui os itens do pedido
         },
         orderBy: {
             createdAt: 'asc'
@@ -103,7 +103,7 @@ export async function getClosedOrdersGroupedByDate(): Promise<GroupedOrders> {
             status: { in: ['Finalizado', 'Cancelado'] }
         },
         include: {
-            items: true
+            OrderItem: true
         },
         orderBy: {
             createdAt: 'desc'

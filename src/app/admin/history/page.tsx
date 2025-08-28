@@ -9,10 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-type OrderWithItems = PrismaOrder & { items: OrderItem[] };
+type OrderWithItems = PrismaOrder & { OrderItem: OrderItem[] };
 
 function CompactOrderCard({ order }: { order: OrderWithItems }) {
-    const totalItems = order.items.reduce((acc, item) => acc + item.quantity, 0);
+    const totalItems = order.OrderItem.reduce((acc, item) => acc + item.quantity, 0);
     
     return (
         <div className="flex items-center justify-between p-3 border-b transition-colors hover:bg-muted/50">

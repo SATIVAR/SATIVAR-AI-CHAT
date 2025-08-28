@@ -6,11 +6,11 @@ import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide
 import { findClientByPhone, createClient as createClientInDb, updateClient as updateClientInDb } from '@/lib/services/client.service';
 import { getAllProducts, getAllCategories } from '@/lib/services/menu.service';
 import { createOrder } from '@/lib/services/order.service';
-import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu, ConversationState } from '@/lib/types';
+import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu, ConversationState, ProductCardData, QuickReplyButtonData, OrderSummaryCardData, OrderControlButtonsData } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
-import { Client as PrismaClient, Address as PrismaAddress } from '@prisma/client';
+import { Client as PrismaClient } from '@prisma/client';
 
-function serializeClient(client: (PrismaClient & { address: PrismaAddress | null }) | null): Client | null {
+function serializeClient(client: PrismaClient | null): Client | null {
     if (!client) return null;
     
     // Converte os dados do Prisma para o tipo da aplicação
@@ -22,13 +22,13 @@ function serializeClient(client: (PrismaClient & { address: PrismaAddress | null
         createdAt: client.createdAt,
         lastOrderAt: client.lastOrderAt,
         address: client.address ? {
-            street: client.address.street || undefined,
-            number: client.address.number || undefined,
-            neighborhood: client.address.neighborhood || undefined,
-            city: client.address.city || undefined,
-            state: client.address.state || undefined,
-            zipCode: client.address.zipCode || undefined,
-            reference: client.address.reference || undefined,
+            street: (client.address as any).street || undefined,
+            number: (client.address as any).number || undefined,
+            neighborhood: (client.address as any).neighborhood || undefined,
+            city: (client.address as any).city || undefined,
+            state: (client.address as any).state || undefined,
+            zipCode: (client.address as any).zipCode || undefined,
+            reference: (client.address as any).reference || undefined,
         } : undefined,
     };
 
@@ -50,7 +50,7 @@ export async function findOrCreateClient(data: UserDetails): Promise<Client> {
     const newClientData = {
         name: data.name,
         phone: data.phone,
-        address: data.address
+        address: data.address,
     };
 
     const { success, data: newClient, error } = await createClientInDb(newClientData);
@@ -87,7 +87,7 @@ export const getKnowledgeBase = unstable_cache(
 
         const enrichedItems = products.map(product => ({
             ...product,
-            price: product.price.toNumber(), // Convert Decimal to number
+            price: product.price, // Already a number from Product interface
             category: categoryMap.get(product.categoryId) || 'Sem categoria'
         }));
 
@@ -100,7 +100,7 @@ export const getKnowledgeBase = unstable_cache(
 function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput['components']): DynamicComponentData[] {
   if (!aiComponents) return [];
 
-  return aiComponents.map(comp => {
+  const mappedComponents: (DynamicComponentData | null)[] = aiComponents.map(comp => {
     if (!comp || !comp.type) return null;
     
     switch (comp.type) {
@@ -112,28 +112,30 @@ function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput[
           name: comp.name,
           description: comp.description,
           price: comp.price,
-        };
+        } as ProductCardData;
       case 'quickReplyButton':
         return {
           type: 'quickReplyButton',
           label: comp.label,
           payload: comp.payload
-        };
+        } as QuickReplyButtonData;
       case 'orderSummaryCard':
         return {
             type: 'orderSummaryCard',
             summary: comp.summary,
             total: comp.total,
-        };
+        } as OrderSummaryCardData;
       case 'orderControlButtons':
         return {
             type: 'orderControlButtons'
-        };
+        } as OrderControlButtonsData;
       default:
         console.warn('Unknown component type received from AI:', comp);
         return null;
     }
-  }).filter((c): c is DynamicComponentData => c !== null);
+  });
+
+  return mappedComponents.filter((c): c is DynamicComponentData => c !== null);
 }
 
 export async function getAiResponse(

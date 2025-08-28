@@ -4,13 +4,25 @@
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { Owner } from '@prisma/client';
+import { createAssociation } from './association.service';
+
+interface RegisterOwnerData {
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
 
 export async function doesOwnerExist(): Promise<boolean> {
   const count = await prisma.owner.count();
   return count > 0;
 }
 
-export async function registerOwner(data: Omit<Owner, 'id' | 'createdAt'>): Promise<{ success: boolean; error?: string }> {
+export async function registerOwner(data: RegisterOwnerData): Promise<{ success: boolean; error?: string }> {
   try {
     const ownerExists = await doesOwnerExist();
     if (ownerExists) {
@@ -22,13 +34,45 @@ export async function registerOwner(data: Omit<Owner, 'id' | 'createdAt'>): Prom
       return { success: false, error: 'Todos os campos são obrigatórios.' };
     }
 
+    // Check if there's already an association (for existing setup)
+    let associationId;
+    const existingAssociation = await prisma.association.findFirst({
+      where: { isActive: true }
+    });
+    
+    if (existingAssociation) {
+      associationId = existingAssociation.id;
+      console.log('Using existing association:', existingAssociation.name);
+    } else {
+      // Create association for the initial setup
+      const associationData = {
+        name: `${name}'s Restaurant`,
+        subdomain: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
+        wordpressUrl: 'https://example.com', // Default value - can be updated later
+        wordpressAuth: {
+          apiKey: '',
+          username: '',
+          password: ''
+        }
+      };
+
+      const associationResult = await createAssociation(associationData);
+      if (!associationResult.success || !associationResult.data) {
+        console.error('Failed to create association:', associationResult.error);
+        return { success: false, error: 'Erro ao criar estabelecimento.' };
+      }
+      associationId = associationResult.data.id;
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     
     await prisma.owner.create({
       data: {
+        id: crypto.randomUUID(),
         email,
         passwordHash,
         name,
+        associationId,
       }
     });
 
@@ -39,7 +83,7 @@ export async function registerOwner(data: Omit<Owner, 'id' | 'createdAt'>): Prom
   }
 }
 
-export async function loginOwner(credentials: Pick<Owner, 'email' | 'password'>): Promise<{ success: boolean; error?: string }> {
+export async function loginOwner(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
     try {
         const { email, password } = credentials;
         if (!email || !password) {
