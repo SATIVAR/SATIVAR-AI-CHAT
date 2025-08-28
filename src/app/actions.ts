@@ -65,7 +65,7 @@ export async function findOrCreateClient(data: UserDetails): Promise<Client> {
 
 export async function getInitialGreeting(clientName?: string): Promise<string> {
     if (clientName) {
-        return `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao UTÓPICOS! Sou a UtópiZap, sua consultora gastronômica. Vamos montar um pedido delicioso hoje?`;
+        return `Olá, ${clientName}! 👋 Bem-vindo(a) de volta ao SatiZap! Sou seu consultor especialista. Vamos montar um orçamento hoje?`;
     }
   const persona = await generateAIPersona({});
   return persona.greeting;
