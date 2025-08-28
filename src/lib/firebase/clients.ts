@@ -2,6 +2,7 @@
 import { db } from './admin';
 import { Client } from '../types';
 import { Timestamp } from 'firebase-admin/firestore';
+import { unstable_cache } from 'next/cache';
 
 // Helper function to convert Firestore timestamp to a serializable Date object
 const toSerializableDate = (timestamp: any): Date => {
@@ -68,44 +69,48 @@ export async function updateClient(id: string, clientData: Partial<Client>): Pro
 }
 
 
-export async function getClients({ searchQuery = '', page = 1, limit = 10 }: { searchQuery?: string; page?: number; limit?: number; }) {
-    let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db.collection('clients');
+export const getClients = unstable_cache(
+    async ({ searchQuery = '', page = 1, limit = 10 }: { searchQuery?: string; page?: number; limit?: number; }) => {
+        let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db.collection('clients');
 
-    query = query.where('isActive', '==', true);
+        query = query.where('isActive', '==', true);
 
-    // Para evitar a necessidade de múltiplos índices compostos, a ordenação e busca serão tratadas após a leitura inicial.
-    // Para grandes datasets, uma solução com um serviço de busca como Algolia seria mais eficiente.
-    const snapshot = await query.orderBy('name').get();
-    
-    let clients: Client[] = snapshot.docs.map(doc => {
-         const data = doc.data();
+        // Para evitar a necessidade de múltiplos índices compostos, a ordenação e busca serão tratadas após a leitura inicial.
+        // Para grandes datasets, uma solução com um serviço de busca como Algolia seria mais eficiente.
+        const snapshot = await query.orderBy('name').get();
+        
+        let clients: Client[] = snapshot.docs.map(doc => {
+             const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name,
+                phone: data.phone,
+                address: data.address || {},
+                createdAt: toSerializableDate(data.createdAt),
+                lastOrderAt: toSerializableDate(data.lastOrderAt),
+                isActive: data.isActive
+            } as Client;
+        });
+
+        if (searchQuery) {
+            const lowercasedQuery = searchQuery.toLowerCase();
+            clients = clients.filter(c => 
+                c.name.toLowerCase().includes(lowercasedQuery) || 
+                c.phone.includes(lowercasedQuery)
+            );
+        }
+        
+        const totalClients = clients.length;
+        const paginatedClients = clients.slice((page - 1) * limit, page * limit);
+        
         return {
-            id: doc.id,
-            name: data.name,
-            phone: data.phone,
-            address: data.address || {},
-            createdAt: toSerializableDate(data.createdAt),
-            lastOrderAt: toSerializableDate(data.lastOrderAt),
-            isActive: data.isActive
-        } as Client;
-    });
-
-    if (searchQuery) {
-        const lowercasedQuery = searchQuery.toLowerCase();
-        clients = clients.filter(c => 
-            c.name.toLowerCase().includes(lowercasedQuery) || 
-            c.phone.includes(lowercasedQuery)
-        );
-    }
-    
-    const totalClients = clients.length;
-    const paginatedClients = clients.slice((page - 1) * limit, page * limit);
-    
-    return {
-        clients: paginatedClients,
-        total: totalClients,
-        page,
-        limit,
-        totalPages: Math.ceil(totalClients / limit),
-    };
-}
+            clients: paginatedClients,
+            total: totalClients,
+            page,
+            limit,
+            totalPages: Math.ceil(totalClients / limit),
+        };
+    },
+    ['clients-list'],
+    { revalidate: 1 } // Revalidate every second
+);
