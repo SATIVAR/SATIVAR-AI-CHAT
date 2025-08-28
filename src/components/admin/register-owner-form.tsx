@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { registerOwner } from '@/lib/firebase/auth-admin';
+import { registerOwner } from '@/lib/services/auth.service';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -63,7 +63,7 @@ export default function RegisterOwnerForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader>
         <CardTitle>Configuração Inicial</CardTitle>
-        <CardDescription>Crie sua conta de proprietário para começar a usar o UtópiZap.</CardDescription>
+        <CardDescription>Crie sua conta de proprietário para começar a usar o SatiZap.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

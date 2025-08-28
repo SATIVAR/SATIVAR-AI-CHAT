@@ -3,37 +3,37 @@
 
 import { generateAIPersona } from '@/ai/flows/generate-ai-persona';
 import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide-ordering-with-ai';
-import { findClientByPhone, createClient as createClientInDb, updateClient as updateClientInDb } from '@/lib/firebase/clients';
-import { getAllProducts, getAllCategories } from '@/lib/firebase/menu';
-import { createOrder } from '@/lib/firebase/orders';
+import { findClientByPhone, createClient as createClientInDb, updateClient as updateClientInDb } from '@/lib/services/client.service';
+import { getAllProducts, getAllCategories } from '@/lib/services/menu.service';
+import { createOrder } from '@/lib/services/order.service';
 import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu, ConversationState } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Client as PrismaClient, Address as PrismaAddress } from '@prisma/client';
 
-
-function serializeClient(client: Client): Client {
-    const serializeTimestamp = (timestamp: any): Date => {
-        if (timestamp instanceof Timestamp) {
-            return timestamp.toDate();
-        }
-        if (timestamp.toDate) { // Handle client-side timestamp objects
-            return timestamp.toDate();
-        }
-        return new Date(timestamp);
+function serializeClient(client: (PrismaClient & { address: PrismaAddress | null }) | null): Client | null {
+    if (!client) return null;
+    
+    // Converte os dados do Prisma para o tipo da aplicação
+    const appClient: Client = {
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        isActive: client.isActive,
+        createdAt: client.createdAt,
+        lastOrderAt: client.lastOrderAt,
+        address: client.address ? {
+            street: client.address.street || undefined,
+            number: client.address.number || undefined,
+            neighborhood: client.address.neighborhood || undefined,
+            city: client.address.city || undefined,
+            state: client.address.state || undefined,
+            zipCode: client.address.zipCode || undefined,
+            reference: client.address.reference || undefined,
+        } : undefined,
     };
 
-    const clientData: any = { ...client };
-
-    if (clientData.createdAt) {
-        clientData.createdAt = serializeTimestamp(clientData.createdAt);
-    }
-    if (clientData.lastOrderAt) {
-        clientData.lastOrderAt = serializeTimestamp(clientData.lastOrderAt);
-    }
-
-    return clientData as Client;
+    return appClient;
 }
-
 
 export async function findOrCreateClient(data: UserDetails): Promise<Client> {
     console.log(`Buscando ou criando cliente com telefone: ${data.phone}`);
@@ -41,27 +41,29 @@ export async function findOrCreateClient(data: UserDetails): Promise<Client> {
 
     if (existingClient) {
         console.log("Cliente encontrado:", existingClient.id);
-        return serializeClient(existingClient);
+        const serialized = serializeClient(existingClient);
+        if (!serialized) throw new Error("Failed to serialize existing client");
+        return serialized;
     }
 
     console.log("Cliente não encontrado, criando novo...");
-    const newClientData: Partial<Client> = {
-        ...data,
-        createdAt: Timestamp.now() as any, // Cast to any to avoid type mismatch
-        lastOrderAt: Timestamp.now() as any,
+    const newClientData = {
+        name: data.name,
+        phone: data.phone,
+        address: data.address
     };
-    const { success, id } = await createClientInDb(newClientData);
+
+    const { success, data: newClient, error } = await createClientInDb(newClientData);
     
-    if (!success || !id) {
-        throw new Error("Failed to create client in DB");
+    if (!success || !newClient) {
+        throw new Error(error || "Failed to create client in DB");
     }
 
-    console.log("Novo cliente criado com ID:", id);
-
-    const clientWithId = { ...newClientData, id: id };
-    return serializeClient(clientWithId as Client);
+    console.log("Novo cliente criado com ID:", newClient.id);
+    const serialized = serializeClient(newClient);
+    if (!serialized) throw new Error("Failed to serialize new client");
+    return serialized;
 }
-
 
 export async function getInitialGreeting(clientName?: string): Promise<string> {
     if (clientName) {
@@ -75,28 +77,25 @@ export async function updateClient(id: string, data: Partial<Client>): Promise<{
     return updateClientInDb(id, data);
 }
 
-// "Rule of Gold": Cache the knowledge base to be read only once per session/defined interval.
 export const getKnowledgeBase = unstable_cache(
     async (): Promise<Menu> => {
-        console.log("Fetching knowledge base (from Firestore)...");
+        console.log("Fetching knowledge base (from Prisma/MySQL)...");
         const categories = await getAllCategories();
         const products = await getAllProducts();
 
-        // Create a map for quick category lookup
         const categoryMap = new Map(categories.map(cat => [cat.id, cat.name]));
 
-        // Enrich products with the category name
         const enrichedItems = products.map(product => ({
             ...product,
-            category: categoryMap.get(product.categoryId) || 'Sem categoria' // Get category name
+            price: product.price.toNumber(), // Convert Decimal to number
+            category: categoryMap.get(product.categoryId) || 'Sem categoria'
         }));
 
         return { categories, items: enrichedItems };
     },
-    ['knowledge-base'], // Cache key
-    { revalidate: 300 } // Revalidate every 5 minutes
+    ['knowledge-base'],
+    { revalidate: 300 }
 );
-
 
 function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput['components']): DynamicComponentData[] {
   if (!aiComponents) return [];
@@ -131,13 +130,11 @@ function mapAiComponentsToAppComponents(aiComponents: GuideOrderingWithAIOutput[
             type: 'orderControlButtons'
         };
       default:
-        // This will catch any unexpected component types from the AI
         console.warn('Unknown component type received from AI:', comp);
         return null;
     }
   }).filter((c): c is DynamicComponentData => c !== null);
 }
-
 
 export async function getAiResponse(
   history: Message[],
@@ -163,12 +160,17 @@ export async function getAiResponse(
 }
 
 export async function submitOrder(client: Client, orderItems: OrderItem[]): Promise<{ success: boolean; orderId?: string }> {
-  console.log("Submitting order to Firestore...");
+  console.log("Submitting order to Prisma...");
   
+  if (!client.id) {
+    console.error("Client ID is missing. Cannot submit order.");
+    return { success: false };
+  }
+
   const total = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  const newOrder: Omit<Order, 'id'> = {
-    clientId: client.id!,
+  const newOrder: Omit<Order, 'id' | 'createdAt' | 'updatedAt'> = {
+    clientId: client.id,
     clientInfo: {
         name: client.name,
         phone: client.phone,
@@ -182,8 +184,6 @@ export async function submitOrder(client: Client, orderItems: OrderItem[]): Prom
     })),
     totalAmount: total,
     status: 'Recebido',
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
   };
 
   try {
@@ -191,9 +191,7 @@ export async function submitOrder(client: Client, orderItems: OrderItem[]): Prom
     console.log(`Order created successfully with ID: ${orderId}`);
     return { success: true, orderId };
   } catch (error) {
-    console.error("Failed to submit order to Firestore:", error);
+    console.error("Failed to submit order to Prisma:", error);
     return { success: false };
   }
 }
-
-    

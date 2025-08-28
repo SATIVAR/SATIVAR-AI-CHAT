@@ -2,10 +2,10 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { getOrders, updateOrderStatus } from '@/lib/firebase/orders';
-import { getStoreStatus, toggleStoreStatus } from '@/lib/firebase/store';
+import { getOrders, updateOrderStatus } from '@/lib/services/order.service';
+import { getStoreStatus, toggleStoreStatus } from '@/lib/services/store.service';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Order } from '@/lib/types';
+import { Order as PrismaOrder, OrderItem, OrderStatus } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -19,22 +19,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
+
+type OrderWithItems = PrismaOrder & { items: OrderItem[] };
+
 const statusConfig = {
   Recebido: {
     title: "A Receber",
     icon: <Utensils className="h-5 w-5" />,
     color: "bg-blue-500",
-    nextStatus: "Em Preparo" as const,
+    nextStatus: "EmPreparo" as const,
     actionLabel: "Preparar Pedido"
   },
-  'Em Preparo': {
+  EmPreparo: {
     title: "Em Preparo",
     icon: <ChefHat className="h-5 w-5" />,
     color: "bg-yellow-500",
-    nextStatus: "Pronto para Entrega" as const,
+    nextStatus: "ProntoParaEntrega" as const,
     actionLabel: "Marcar como Pronto"
   },
-  'Pronto para Entrega': {
+  ProntoParaEntrega: {
     title: "Pronto para Entrega",
     icon: <Check className="h-5 w-5" />,
     color: "bg-green-500",
@@ -44,15 +47,15 @@ const statusConfig = {
 };
 
 
-function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (id: string, status: Order['status']) => void; }) {
+function OrderCard({ order, onStatusChange }: { order: OrderWithItems; onStatusChange: (id: string, status: OrderStatus) => void; }) {
     const totalItems = order.items.reduce((acc, item) => acc + item.quantity, 0);
-    const createdAtDate = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt as any);
+    const createdAtDate = order.createdAt;
 
+    // @ts-ignore
     const config = statusConfig[order.status as keyof typeof statusConfig];
     if (order.status === 'Cancelado' || order.status === 'Finalizado' || !config) return null;
 
-    const address = order.clientInfo.address;
-    const formattedAddress = address ? `${address.street || ''}, ${address.number || ''} - ${address.neighborhood || ''}`.trim().replace(/, -$/, '') : 'Retirada no local';
+    const formattedAddress = order.clientAddress || 'Retirada no local';
 
 
     return (
@@ -67,13 +70,13 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
                 <CardHeader className="p-4 space-y-2">
                     <div className="flex justify-between items-start">
                         <CardTitle className="text-lg font-bold">
-                            {order.clientInfo.name}
+                            {order.clientName}
                         </CardTitle>
                         <span className="text-sm font-mono text-muted-foreground">#{order.id?.slice(-5).toUpperCase()}</span>
                     </div>
                      <div className="text-xs text-muted-foreground flex items-center gap-4">
                         <span>{format(createdAtDate, "HH:mm'h'", { locale: ptBR })}</span>
-                        {address && (
+                        {order.clientAddress && (
                             <span className="flex items-center gap-1.5 truncate">
                                 <MapPin size={12} />
                                 <span className="truncate">{formattedAddress}</span>
@@ -85,11 +88,11 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
                     <Separator />
                     <div className="text-sm space-y-2 max-h-32 overflow-y-auto pr-2">
                         {order.items.map(item => (
-                            <div key={item.productId} className="flex justify-between items-center">
+                            <div key={item.id} className="flex justify-between items-center">
                                 <div>
                                     <span className="font-semibold">{item.quantity}x</span> {item.productName}
                                 </div>
-                                <span className="font-mono text-muted-foreground">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unitPrice * item.quantity)}</span>
+                                <span className="font-mono text-muted-foreground">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unitPrice.toNumber() * item.quantity)}</span>
                             </div>
                         ))}
                     </div>
@@ -98,10 +101,10 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
                 <CardFooter className="p-4 pt-0 flex flex-col items-stretch gap-4">
                     <div className="flex justify-between items-center font-bold text-lg">
                         <span>Total:</span>
-                        <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.totalAmount)}</span>
+                        <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.totalAmount.toNumber())}</span>
                     </div>
                      {config.nextStatus && (
-                        <Button size="sm" onClick={() => onStatusChange(order.id!, config.nextStatus!)}>
+                        <Button size="sm" onClick={() => onStatusChange(order.id, config.nextStatus!)}>
                             {config.actionLabel}
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
@@ -134,7 +137,7 @@ function KdsSkeleton() {
 
 export default function DashboardPage() {
     const { toast } = useToast();
-    const [orders, setOrders] = useState<Order[]>([]);
+    const [orders, setOrders] = useState<OrderWithItems[]>([]);
     const [isStoreOpen, setIsStoreOpen] = useState<boolean | undefined>(undefined);
     const [isLoading, setIsLoading] = useState<true | false>(true);
     const [isSwitching, startTransition] = useTransition();
@@ -148,7 +151,7 @@ export default function DashboardPage() {
 
             if (statusData.isOpen) {
                 const ordersData = await getOrders();
-                setOrders(ordersData);
+                setOrders(ordersData as OrderWithItems[]);
             } else {
                 setOrders([]);
             }
@@ -178,7 +181,7 @@ export default function DashboardPage() {
         });
     };
     
-    const handleStatusChange = async (id: string, newStatus: Order['status']) => {
+    const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
         
         const originalOrders = [...orders];
         const updatedOrders = orders.filter(o => o.id !== id);
@@ -197,8 +200,8 @@ export default function DashboardPage() {
 
     const ordersByStatus = {
         Recebido: orders.filter(o => o.status === 'Recebido'),
-        'Em Preparo': orders.filter(o => o.status === 'Em Preparo'),
-        'Pronto para Entrega': orders.filter(o => o.status === 'Pronto para Entrega'),
+        EmPreparo: orders.filter(o => o.status === 'EmPreparo'),
+        ProntoParaEntrega: orders.filter(o => o.status === 'ProntoParaEntrega'),
     };
     
     const statusKeys = Object.keys(statusConfig) as (keyof typeof statusConfig)[];
@@ -207,7 +210,7 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-col min-h-full bg-muted/20 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
             <header className="bg-background dark:bg-card shadow-sm p-4 sticky top-0 z-20 flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Painel da Loja - KDS</h1>
+                <h1 className="text-2xl font-bold">Painel</h1>
                  {isStoreOpen === undefined ? (
                     <div className="flex items-center space-x-2">
                         <Skeleton className="h-6 w-24" />
@@ -249,11 +252,14 @@ export default function DashboardPage() {
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                                      <span className={cn("w-3 h-3 rounded-full", statusConfig[status].color)}></span>
                                     {statusConfig[status].title}
+                                    {/* @ts-ignore */}
                                     <span className="text-base font-normal text-muted-foreground">({(ordersByStatus[status] || []).length})</span>
                                 </h2>
                                 <AnimatePresence>
                                 <div className="space-y-4">
+                                    {/* @ts-ignore */}
                                     {(ordersByStatus[status] || []).length > 0 ? (
+                                        // @ts-ignore
                                         ordersByStatus[status].map(order => (
                                             <OrderCard key={order.id} order={order} onStatusChange={handleStatusChange} />
                                         ))

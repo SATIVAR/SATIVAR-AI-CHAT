@@ -1,5 +1,5 @@
 
-import { doesOwnerExist } from '@/lib/firebase/auth-admin';
+import { doesOwnerExist } from '@/lib/services/auth.service';
 import RegisterOwnerForm from '@/components/admin/register-owner-form';
 import LoginOwnerForm from '@/components/admin/login-owner-form';
 

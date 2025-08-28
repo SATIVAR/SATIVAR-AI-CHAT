@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { loginOwner } from '@/lib/firebase/auth-admin';
+import { loginOwner } from '@/lib/services/auth.service';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -61,7 +61,7 @@ export default function LoginOwnerForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader>
         <CardTitle>Acesso Restrito</CardTitle>
-        <CardDescription>Faça login para gerenciar o UtópiZap.</CardDescription>
+        <CardDescription>Faça login para gerenciar o SatiZap.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

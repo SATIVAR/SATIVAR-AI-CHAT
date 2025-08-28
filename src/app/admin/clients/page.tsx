@@ -1,11 +1,15 @@
 
-import { getClients, updateClient, createClient } from '@/lib/firebase/clients';
+'use server';
+
+import { getClients, updateClient, createClient } from '@/lib/services/client.service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Client } from '@/lib/types';
 import ClientsDataTable from '@/components/admin/clients/clients-data-table';
 import { revalidatePath } from 'next/cache';
+import { Client as PrismaClient, Address as PrismaAddress } from '@prisma/client';
 
-export const revalidate = 0;
+// Tipagem para os dados que vêm do serviço Prisma
+type ClientWithAddress = PrismaClient & { address: PrismaAddress | null };
 
 export default async function ClientsPage({
   searchParams,
@@ -19,11 +23,12 @@ export default async function ClientsPage({
   
   const data = await getClients({ searchQuery, page, limit });
 
-  // Serializa os dados antes de passar para o componente cliente
-  const serializableClients = data.clients.map(client => ({
+  // Serializa os dados do Prisma para o tipo esperado pelo componente cliente
+  const serializableClients: Client[] = data.clients.map((client: ClientWithAddress) => ({
     ...client,
-    createdAt: client.createdAt instanceof Date ? client.createdAt.toISOString() : new Date(client.createdAt).toISOString(),
-    lastOrderAt: client.lastOrderAt instanceof Date ? client.lastOrderAt.toISOString() : new Date(client.lastOrderAt).toISOString(),
+    createdAt: client.createdAt.toISOString(),
+    lastOrderAt: client.lastOrderAt.toISOString(),
+    address: client.address ? { ...client.address } : undefined,
   }));
 
 
@@ -34,6 +39,7 @@ export default async function ClientsPage({
         const { id, ...dataToUpdate } = clientData;
         result = await updateClient(id, dataToUpdate);
     } else {
+        // @ts-ignore
         result = await createClient(clientData);
     }
     revalidatePath('/admin/clients');
@@ -56,7 +62,7 @@ export default async function ClientsPage({
         </CardHeader>
         <CardContent>
           <ClientsDataTable 
-            data={serializableClients as unknown as Client[]}
+            data={serializableClients}
             pageCount={data.totalPages}
             onSave={handleSaveClient}
             onDelete={handleDeleteClient}

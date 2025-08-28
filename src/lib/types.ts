@@ -1,34 +1,18 @@
 
-import type { Timestamp } from 'firebase/firestore';
+import { Product as PrismaProduct, ProductCategory as PrismaCategory, OrderStatus } from '@prisma/client';
 
-export interface ProductCategory {
-  id: string;
-  name: string;
-  description: string;
-  order: number;
-  isActive: boolean;
-  imageUrl?: string;
-  nextStepSuggestion?: string;
-  createdAt?: Date | Timestamp;
-  updatedAt?: Date | Timestamp;
-}
+export interface ProductCategory extends PrismaCategory {}
 
-export interface Product {
-  id: string;
-  name:string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  categoryId: string;
-  isActive: boolean;
-  isFeatured: boolean;
-  category?: string;
+// Estendendo o tipo Product do Prisma para corresponder ao que a UI espera
+export interface Product extends Omit<PrismaProduct, 'price'> {
+  price: number; // A UI espera um número, o Prisma usa Decimal
+  category?: string; // Campo opcional adicionado pela lógica de negócios
 }
 
 export interface OrderItem extends Product {
   quantity: number;
-  unitPrice: number; // Snapshot of the price at the time of order
-  productName: string; // Snapshot of the name at the time of order
+  unitPrice: number;
+  productName: string;
 }
 
 export interface ProductCardData {
@@ -68,24 +52,27 @@ export interface Message {
 }
 
 export interface Menu {
-  categories: ProductCategory[];
-  items: (Product & { category: string })[];
+  categories: PrismaCategory[];
+  items: Product[];
+}
+
+export interface AddressDetails {
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  reference?: string;
 }
 
 export interface UserDetails {
   name: string;
   phone: string;
-  address?: {
-      street?: string;
-      number?: string;
-      neighborhood?: string;
-      city?: string;
-      state?: string;
-      zipCode?: string;
-      reference?: string;
-  };
+  address?: AddressDetails;
 }
 
+// Tipo de Pedido para a lógica da aplicação
 export interface Order {
   id?: string;
   clientId: string;
@@ -97,27 +84,20 @@ export interface Order {
     unitPrice: number;
   }[];
   totalAmount: number;
-  status: 'Recebido' | 'Em Preparo' | 'Pronto para Entrega' | 'Finalizado' | 'Cancelado';
-  createdAt: Date | Timestamp;
-  updatedAt: Date | Timestamp;
+  status: OrderStatus;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
+// Tipo Cliente para a lógica da aplicação
 export interface Client {
-    id?: string;
+    id: string;
     name: string;
     phone: string;
-    address?: {
-        street?: string;
-        number?: string;
-        neighborhood?: string;
-        city?: string;
-        state?: string;
-        zipCode?: string;
-        reference?: string;
-    };
-    isActive?: boolean;
-    createdAt: Date | Timestamp;
-    lastOrderAt: Date | Timestamp;
+    address?: AddressDetails;
+    isActive: boolean;
+    createdAt: Date;
+    lastOrderAt: Date;
 }
 
 export type ConversationState = 
@@ -125,5 +105,3 @@ export type ConversationState =
     | 'MostrandoCategorias'
     | 'MostrandoProdutos'
     | 'RevisandoPedido';
-
-    
