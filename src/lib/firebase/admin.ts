@@ -32,7 +32,7 @@ function initializeAdminApp() {
       credential: admin.credential.cert({
         projectId: serviceAccount.projectId,
         clientEmail: serviceAccount.clientEmail,
-        privateKey: JSON.parse(serviceAccount.privateKey),
+        privateKey: serviceAccount.privateKey,
       }),
     });
     console.log('Firebase Admin inicializado com sucesso!');
