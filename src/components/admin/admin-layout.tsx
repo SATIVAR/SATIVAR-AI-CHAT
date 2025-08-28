@@ -4,18 +4,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, LogOut, ShoppingBasket, Layers, UtensilsCrossed, History } from 'lucide-react';
+import { Home, Users, LogOut, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Logo } from '../icons/logo';
-import { cn } from '@/lib/utils';
 import { ThemeToggle } from '../theme-toggle';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
@@ -55,24 +48,18 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                     <div className="flex h-16 items-center justify-center border-b px-6">
                          <Link href="/admin/dashboard" className="flex items-center gap-2 font-semibold" prefetch={false}>
                             <Logo className="h-8 w-8 text-primary" />
-                            <span className="sr-only">UtópiZap Admin</span>
+                            <span className="sr-only">SatiZap Admin</span>
                         </Link>
                     </div>
                     <nav className="flex flex-col items-center gap-4 p-4 flex-1">
-                        <AdminNavLink href="/admin/dashboard" label="Painel da Loja">
+                        <AdminNavLink href="/admin/dashboard" label="Painel">
                             <Home className="h-5 w-5" />
                         </AdminNavLink>
                         <AdminNavLink href="/admin/history" label="Histórico de Pedidos">
                             <History className="h-5 w-5" />
                         </AdminNavLink>
-                        <AdminNavLink href="/admin/clients" label="Clientes">
+                        <AdminNavLink href="/admin/clients" label="Pacientes">
                             <Users className="h-5 w-5" />
-                        </AdminNavLink>
-                        <AdminNavLink href="/admin/categories" label="Categorias">
-                            <Layers className="h-5 w-5" />
-                        </AdminNavLink>
-                        <AdminNavLink href="/admin/products" label="Produtos">
-                            <UtensilsCrossed className="h-5 w-5" />
                         </AdminNavLink>
                     </nav>
                     <div className="mt-auto p-4 flex flex-col items-center gap-4">

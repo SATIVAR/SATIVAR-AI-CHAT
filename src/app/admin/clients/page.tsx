@@ -50,7 +50,7 @@ export default async function ClientsPage({
     <div className="w-full space-y-6">
        <Card>
         <CardHeader>
-          <CardTitle>Gerenciamento de Clientes</CardTitle>
+          <CardTitle>Gerenciamento de Pacientes</CardTitle>
         </CardHeader>
         <CardContent>
           <ClientsDataTable 
