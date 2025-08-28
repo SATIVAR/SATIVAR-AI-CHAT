@@ -1,0 +1,87 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Owner {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  name        String
+  phone       String    @unique
+  address     Json?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  lastOrderAt DateTime  @default(now()) @updatedAt
+  orders      Order[]
+}
+
+model ProductCategory {
+  id                 String    @id @default(cuid())
+  name               String
+  description        String    @db.Text
+  order              Int       @default(0)
+  isActive           Boolean   @default(true)
+  imageUrl           String?
+  nextStepSuggestion String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+  products           Product[]
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  name        String
+  description String           @db.Text
+  price       Float
+  imageUrl    String?
+  isActive    Boolean          @default(true)
+  isFeatured  Boolean          @default(false)
+  category    ProductCategory  @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  orderItems  OrderItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  client      Client      @relation(fields: [clientId], references: [id])
+  clientId    String
+  clientInfo  Json
+  totalAmount Float
+  status      OrderStatus @default(Recebido)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now()) @updatedAt
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  order       Order   @relation(fields: [orderId], references: [id])
+  orderId     String
+  product     Product @relation(fields: [productId], references: [id])
+  productId   String
+  productName String
+  quantity    Int
+  unitPrice   Float
+}
+
+enum OrderStatus {
+  Recebido
+  Em_Preparo
+  Pronto_para_Entrega
+  Finalizado
+  Cancelado
+}
