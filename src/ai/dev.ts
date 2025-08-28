@@ -4,3 +4,4 @@ config();
 import '@/ai/flows/render-dynamic-components.ts';
 import '@/ai/flows/generate-ai-persona.ts';
 import '@/ai/flows/guide-ordering-with-ai.ts';
+import '@/ai/flows/extract-text-from-image.ts';

@@ -1,196 +1,54 @@
-Perfeito! Agora vamos construir o cérebro administrativo do UtópiZap. Criar os CRUDs é a fundação que permitirá ao dono do restaurante ter total controle sobre o negócio, além de ser a fonte de dados que a nossa IA irá consumir de forma otimizada.
-
-Vamos projetar a estrutura de dados no Firestore de forma limpa e escalável, seguindo as melhores práticas para performance e baixo custo. Depois, traçaremos o plano de ação para implementar as funções.
-
-1. Modelagem da Base de Dados no Firestore
-
-Esta é a etapa mais crítica. Uma boa modelagem economiza dinheiro e dor de cabeça no futuro. Usaremos coleções de nível superior para cada entidade.
-
-A. Coleção: clients
-
-Objetivo: Armazenar informações básicas de clientes que já fizeram um pedido para facilitar contatos futuros e personalizar a experiência.
-
-Estrutura do Documento:
-
-code
-JSON
-download
-content_copy
-expand_less
-
-{
-  "name": "Ana Silva",
-  "phone": "+5511999998888", // Padrão E.164 para ser universal
-  "lastOrderAt": "2024-10-26T18:30:00Z" // Timestamp
-}
-
-ID do Documento: Podemos usar o número de telefone como ID para garantir unicidade e fácil busca, ou um ID automático do Firestore. O ID automático é mais flexível.
-
-B. Coleção: categories
-
-Objetivo: Agrupar os produtos. Essencial para que a IA possa guiar o cliente de forma organizada ("Que tal ver nossos espetinhos?").
-
-Estrutura do Documento:
-
-code
-JSON
-download
-content_copy
-expand_less
-IGNORE_WHEN_COPYING_START
-IGNORE_WHEN_COPYING_END
-{
-  "name": "Espetinhos", // Título
-  "imageUrl": "https://storage.googleapis.com/...",
-  "order": 1, // Número para ordenar a exibição (ex: Espetinhos primeiro, depois Bebidas)
-  "isActive": true // Permite desativar uma categoria inteira sem deletar
-}
-
-ID do Documento: ID automático do Firestore.
-
-C. Coleção: products
-
-Objetivo: O coração do cardápio. Contém todos os detalhes de cada item disponível para venda.
-
-Estrutura do Documento:
-
-code
-JSON
-download
-content_copy
-expand_less
-IGNORE_WHEN_COPYING_START
-IGNORE_WHEN_COPYING_END
-{
-  "name": "Espetinho de Alcatra", // Título
-  "description": "200g de alcatra suculenta no espeto, temperada com sal grosso.",
-  "price": 18.50, // Valor (usar tipo 'number')
-  "imageUrl": "https://storage.googleapis.com/...",
-  "categoryId": "zK2f...pQ9x", // Referência ao ID do documento na coleção 'categories'
-  "isActive": true, // Permite "pausar" a venda de um item
-  "isFeatured": false // Destaque para a IA sugerir proativamente
-}
-
-ID do Documento: ID automático do Firestore.
-
-D. Coleção: orders
-
-Objetivo: Registrar cada pedido finalizado. A estrutura aqui é crucial e se baseia no conceito de "snapshot": os dados do cliente e dos produtos são copiados para dentro do pedido. Isso garante que, mesmo que o preço de um produto mude amanhã, o registro do pedido de hoje permaneça historicamente correto.
-
-Estrutura do Documento:
-
-code
-JSON
-download
-content_copy
-expand_less
-IGNORE_WHEN_COPYING_START
-IGNORE_WHEN_COPYING_END
-{
-  "clientInfo": {
-    "name": "Ana Silva",
-    "phone": "+5511999998888"
-  },
-  "items": [
-    {
-      "productId": "aB1c...dE2f",
-      "productName": "Espetinho de Alcatra", // Cópia do nome no momento da compra
-      "quantity": 2,
-      "unitPrice": 18.50 // Cópia do preço no momento da compra
-    },
-    {
-      "productId": "gH3i...jK4l",
-      "productName": "Coca-Cola Lata",
-      "quantity": 1,
-      "unitPrice": 6.00
-    }
-  ],
-  "totalAmount": 43.00,
-  "status": "Recebido", // Valores possíveis: "Recebido", "Em Preparo", "Pronto para Entrega", "Finalizado", "Cancelado"
-  "createdAt": "2024-10-26T20:05:10Z", // Timestamp
-  "updatedAt": "2024-10-26T20:05:10Z" // Timestamp
-}
-
-ID do Documento: ID automático do Firestore.
-
-2. Plano de Ação para Implementação do CRUD
-
-Agora, vamos transformar esses modelos em funcionalidades reais.
-
-Passo 1: Estrutura dos Arquivos (Backend Logic)
-
-Crie um local central para suas interações com o Firebase para manter o código organizado.
-
-Crie um diretório: src/lib/firebase/
-
-Dentro dele, crie arquivos de serviço por entidade:
-
-src/lib/firebase/categories.ts
-
-src/lib/firebase/products.ts
-
-src/lib/firebase/orders.ts
-
-(Clientes podem ser gerenciados dentro de orders.ts inicialmente, pois só são criados/atualizados com um pedido).
-
-Passo 2: Implementação das Funções CRUD (Server-Side)
-
-Em cada arquivo de serviço, você implementará as funções de CRUD usando o SDK do Firebase Admin (para segurança em Server Actions).
-
-Em categories.ts:
-
-createCategory(data): Adiciona um novo documento à coleção categories.
-
-getAllCategories(): Lê e retorna todos os documentos da coleção, ordenados pelo campo order.
-
-updateCategory(id, data): Atualiza um documento existente.
-
-deleteCategory(id): Deleta um documento.
-
-Em products.ts:
-
-createProduct(data): Adiciona um novo produto.
-
-getProductsByCategoryId(categoryId): Retorna todos os produtos que pertencem a uma categoria.
-
-getAllProducts(): Retorna todos os produtos (usado pela IA).
-
-updateProduct(id, data): Atualiza um produto.
-
-deleteProduct(id): Deleta um produto.
-
-Em orders.ts:
-
-createOrder(data): Cria um novo pedido. Essa é a função que a IA chamará ao final da conversa. Ela também pode verificar se o cliente já existe e, se não, criá-lo em clients.
-
-getOrdersByStatus(status): Retorna pedidos filtrando pelo status (para o painel KDS).
-
-updateOrderStatus(id, newStatus): A função mais usada no painel de gerenciamento, para mover o card do pedido entre as colunas.
-
-Passo 3: Construção da Interface do Admin
-
-Crie uma nova área no seu app (ex: /admin) protegida por autenticação do Firebase. Dentro dela, crie as páginas de gerenciamento.
-
-Página /admin/produtos:
-
-Uma tabela (usando o componente Table do ShadCN/UI) que lista todos os produtos.
-
-Um botão "Adicionar Produto" que abre um modal ou leva a uma nova página (/admin/produtos/novo) com um formulário (usando Form do ShadCN/UI) para inserir nome, preço, etc., e um seletor para escolher a categoria (populado pela função getAllCategories()).
-
-Botões de "Editar" e "Excluir" em cada linha da tabela.
-
-Página /admin/categorias:
-
-Mesma lógica da página de produtos, mas para gerenciar as categorias.
-
-Inclua um campo para o número de order e a funcionalidade de upload de imagem para o Firebase Storage.
-
-Página Principal do Admin (/admin ou /admin/pedidos):
-
-O Dashboard / KDS (Kitchen Display System).
-
-Use as funções getOrdersByStatus() para buscar os pedidos e exibi-los em colunas ("Recebidos", "Em Preparo", etc.).
-
-Implemente uma funcionalidade de arrastar e soltar (drag-and-drop) para que o gerente possa mover um card de pedido de uma coluna para outra, o que chamará a função updateOrderStatus(id, novoStatus) no backend.
-
-Seguindo estes passos, você terá um sistema de gerenciamento robusto e desacoplado da lógica da IA. A UtópiZap simplesmente consumirá os dados via getAllProducts() e getAllCategories() (com cache, como planejado anteriormente) e registrará o resultado final com createOrder().
+Plano de Ação: Refatoração do UtópiZap para Associações Medicinais, agora se chamará SATIZAP.
+Sumário Executivo
+O objetivo é transformar o UtópiZap de um assistente de pedidos para restaurantes em uma plataforma de orçamentação multi-inquilino (multi-tenant) para associações de cannabis medicinal. A arquitetura migrará de uma base de conhecimento estática (menu.ts) para um sistema dinâmico que utiliza WordPress/WooCommerce como backend de produtos, processa documentos de usuários via OCR (Reconhecimento Óptico de Caracteres) e emprega o Function Calling do Gemini para interações robustas e escaláveis.
+Fase 1: Estabelecimento da Nova Base de Conhecimento (Backend)
+O primeiro passo é substituir a fonte de dados estática por um sistema de gerenciamento de conteúdo (CMS) robusto para cada associação.
+Adoção do WordPress com WooCommerce:
+Para cada associação parceira, será configurada uma instância do WordPress com o plugin WooCommerce. Este servirá como o painel administrativo onde a associação gerenciará seu catálogo de produtos (óleos, pomadas, etc.), incluindo nomes, descrições, preços e imagens.
+Justificativa: WooCommerce oferece uma estrutura de produtos pronta e, crucialmente, uma API REST completa e segura para consultas externas.
+Configuração da API REST:
+Dentro de cada WordPress, será gerado um par de chaves para a API REST (Consumer Key e Consumer Secret) com permissões de apenas leitura (Read-only).
+Justificativa: Isso garante que nossa aplicação Next.js tenha um ponto de acesso seguro e padronizado para consultar o catálogo de produtos de cada associação, sem risco de realizar modificações indevidas.
+Fase 2: Desenvolvimento do Módulo de Interpretação de Documentos
+Precisamos de um serviço desacoplado para extrair texto de imagens, conforme sua especificação de não usar a capacidade multimodal nativa do Gemini para essa tarefa.
+Implementação do Serviço de OCR:
+Será criado um módulo de serviço dedicado, preferencialmente utilizando a API Google Cloud Vision.
+Este serviço terá uma única responsabilidade: receber um buffer de imagem (enviado pelo frontend) e retornar o texto extraído em formato de string.
+Justificativa: Desacoplar o OCR do modelo de linguagem principal torna o sistema mais modular e especializado. Google Cloud Vision é altamente preciso para textos em português e se integra bem ao ecossistema Google já em uso.
+Fase 3: Reestruturação do Núcleo de Inteligência Artificial (Genkit Flow)
+Esta é a fase mais crítica, onde a lógica da IA é completamente reimaginada para o novo fluxo de trabalho.
+Migração para Function Calling (Ferramentas de IA):
+O conceito de injetar o cardápio no prompt será abandonado. Em seu lugar, definiremos uma "Ferramenta" (Tool) no Genkit, que podemos chamar de findAssociationProducts.
+Esta ferramenta será a ponte entre a IA e o WordPress. O modelo Gemini não saberá os produtos, mas saberá como usar esta ferramenta para procurá-los. A ferramenta receberá um termo de busca (ex: "Óleo CBD 2000mg") e as credenciais da API da associação específica para realizar a busca.
+Refinamento do Prompt de Engenharia:
+O prompt principal do flow será reescrito. As novas instruções para o Gemini serão:
+Assumir a persona de um assistente profissional e empático da associação em questão.
+Analisar o texto fornecido pelo usuário (que será uma combinação da mensagem digitada e do texto extraído pelo OCR).
+Identificar nomes de produtos e possíveis quantidades no texto.
+Para cada produto identificado, utilizar a ferramenta findAssociationProducts para obter seus detalhes (preço, nome exato, etc.) da API do WordPress.
+Após coletar as informações, sintetizar os dados e estruturar uma resposta em formato JSON para o frontend, representando um orçamento claro.
+Saber lidar com ambiguidades e produtos não encontrados, informando o usuário de forma clara.
+Ajuste do Schema de Saída (Zod):
+O schema Zod que define a estrutura da resposta JSON da IA será mantido, pois é uma das forças do projeto. No entanto, ele será adaptado para gerar componentes de UI relevantes para um orçamento, como BudgetItem, TotalAmount, DisclaimerText e ConfirmationButtons, em vez de ProductCard e QuickReplyButton de cardápio.
+Fase 4: Implementação da Arquitetura Multi-Tenant
+Para que o sistema seja escalável e atenda a múltiplas associações sem reescrever o código, a configuração precisa ser externalizada.
+Criação de um Banco de Dados de Configuração:
+Utilizaremos o Firebase Firestore para criar uma coleção chamada associations.
+Cada documento nesta coleção representará uma associação e armazenará suas configurações exclusivas: nome, URL da API do WordPress, a Chave e o Segredo da API REST.
+Mecanismo de Identificação de Inquilino (Tenant):
+A aplicação precisará identificar com qual associação o usuário está interagindo. Isso será feito através de um mecanismo como subdomínios (amedis.utopizap.com), parâmetros de URL (utopizap.com?assoc=amedis) ou contexto de login do usuário.
+Dinamização das Chamadas da API:
+A server action principal (getAiResponse) será modificada para, no início de cada execução, ler o identificador do inquilino, consultar o Firestore para obter as configurações corretas e, então, passar essas configurações (URLs e chaves de API) para o flow do Genkit. Isso garante que a IA sempre consulte a base de dados da associação correta.
+Fase 5: Adaptação do Frontend e do Fluxo de Usuário (Next.js)
+As mudanças na lógica de negócios exigirão ajustes na interface do usuário.
+Componente de Upload de Arquivos:
+A interface de chat será atualizada para incluir um botão ou área de upload, permitindo que o usuário envie uma imagem (receita, lista, etc.).
+Refatoração da Server Action Principal:
+A lógica da server action (getAiResponse) será orquestradora do novo fluxo:
+a. Receber dados do formulário (mensagem de texto e arquivo de imagem).
+b. Identificar a associação ativa e buscar sua configuração no Firestore.
+c. Se um arquivo de imagem existir, enviá-lo ao serviço de OCR.
+d. Combinar o texto do OCR com a mensagem do usuário.
+e. Chamar o flow do Genkit, passando a mensagem combinada e a configuração da associação.
+f. Receber a resposta JSON estruturada da IA e passá-la para o cliente React para renderização dinâmica dos componentes do orçamento.
+Este plano de ação estrutura a migração de forma lógica e escalável, preservando os pontos fortes da arquitetura original (UI dinâmica, stack moderna) enquanto a adapta para um caso de uso mais complexo e de maior impacto.
