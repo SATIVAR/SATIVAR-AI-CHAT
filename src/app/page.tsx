@@ -362,7 +362,7 @@ export default function Home() {
       const finalMessage: Message = {
         id: `final-${Date.now()}`,
         role: 'ai',
-        content: `Perfeito, ${data.name}! ✅ Seu pedido foi recebido com sucesso e já está na fila para preparo. Vou te manter atualizado por aqui sobre cada etapa!`,
+        content: `Perfeito, ${data.name}! ✅ Seu orçamento foi recebido com sucesso e já está na fila para preparo. Vou te manter atualizado por aqui sobre cada etapa!`,
         timestamp: new Date(),
         components: [
           { 
@@ -387,7 +387,7 @@ export default function Home() {
       const errorMessage: Message = {
         id: `error-submit-${Date.now()}`,
         role: 'ai',
-        content: "Tivemos um problema ao finalizar seu pedido. Por favor, revise os dados e tente novamente.",
+        content: "Tivemos um problema ao finalizar seu orçamento. Por favor, revise os dados e tente novamente.",
         timestamp: new Date()
       };
       updateChatHistory([...messages, errorMessage]);
@@ -451,7 +451,3 @@ export default function Home() {
     </>
   );
 }
-
-
-
-    

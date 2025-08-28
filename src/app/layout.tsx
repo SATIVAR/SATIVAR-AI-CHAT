@@ -13,8 +13,8 @@ const fontSans = FontSans({
 })
 
 export const metadata: Metadata = {
-  title: 'UtópiZap AI Chat',
-  description: 'Seu assistente de pedidos pessoal.',
+  title: 'SatiZap AI Chat',
+  description: 'Seu assistente de orçamentos pessoal.',
 };
 
 export default function RootLayout({

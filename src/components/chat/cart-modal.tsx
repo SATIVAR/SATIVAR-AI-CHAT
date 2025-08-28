@@ -29,8 +29,8 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, setIsOpen, order, onUpdat
         if (order.length === 0) {
             toast({
                 variant: 'destructive',
-                title: 'Carrinho Vazio',
-                description: 'Você precisa adicionar itens ao carrinho antes de finalizar o pedido.',
+                title: 'Orçamento Vazio',
+                description: 'Você precisa adicionar itens ao orçamento antes de finalizar o pedido.',
             });
             return;
         }
@@ -41,9 +41,9 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, setIsOpen, order, onUpdat
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetContent className="sm:max-w-lg flex flex-col">
                 <SheetHeader>
-                    <SheetTitle className="text-2xl">🛒 Seu Pedido</SheetTitle>
+                    <SheetTitle className="text-2xl">🛒 Seu Orçamento</SheetTitle>
                     <SheetDescription>
-                        Revise os itens do seu pedido. Você pode alterar as quantidades ou remover produtos.
+                        Revise os itens do seu orçamento. Você pode alterar as quantidades ou remover produtos.
                     </SheetDescription>
                 </SheetHeader>
 
@@ -53,7 +53,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, setIsOpen, order, onUpdat
                     <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground gap-4">
                         <ShoppingCart size={48} />
                         <p className="font-medium">Seu carrinho está vazio</p>
-                        <p className="text-sm">Explore nosso cardápio para adicionar itens!</p>
+                        <p className="text-sm">Explore nosso catálogo para adicionar itens!</p>
                     </div>
                 ) : (
                     <ScrollArea className="flex-grow pr-4 -mr-6">
@@ -100,8 +100,8 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, setIsOpen, order, onUpdat
                             <span className="text-primary">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" onClick={onCancelOrder}>Cancelar Pedido</Button>
-                            <Button onClick={handleFinalize}>Finalizar Pedido</Button>
+                            <Button variant="outline" onClick={onCancelOrder}>Cancelar Orçamento</Button>
+                            <Button onClick={handleFinalize}>Finalizar Orçamento</Button>
                         </div>
                     </div>
                 </SheetFooter>

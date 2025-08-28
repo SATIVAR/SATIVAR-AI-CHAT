@@ -19,8 +19,8 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ data }) => {
     React.useEffect(() => {
         if (!data.summary) { // Only toast if it's the pre-submission card
             toast({
-                title: 'Revise seu pedido',
-                description: 'Por favor, preencha seus dados de entrega abaixo para confirmar o pedido.',
+                title: 'Revise seu orçamento',
+                description: 'Por favor, preencha seus dados de entrega abaixo para confirmar o orçamento.',
             });
         }
     }, [toast, data.summary]);
@@ -42,8 +42,8 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ data }) => {
         >
             <Card className="w-full shadow-lg border-primary/20 bg-primary/5 dark:bg-primary/10">
                 <CardHeader>
-                    <CardTitle>✅ Pedido Confirmado!</CardTitle>
-                    <CardDescription>Resumo do seu pedido:</CardDescription>
+                    <CardTitle>✅ Orçamento Confirmado!</CardTitle>
+                    <CardDescription>Resumo do seu orçamento:</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans bg-background/50 p-3 rounded-md border">
@@ -75,12 +75,12 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ data }) => {
         </CardHeader>
         <CardContent>
             <p className="text-sm text-muted-foreground">
-                Seu pedido está pronto. Para finalizar, por favor, preencha seus dados de entrega e contato logo abaixo.
+                Seu orçamento está pronto. Para finalizar, por favor, preencha seus dados de entrega e contato logo abaixo.
             </p>
         </CardContent>
         <CardFooter className="flex-col items-stretch space-y-2 pt-4 border-t">
            <p className="text-xs text-muted-foreground text-center pt-2">
-              Você pode revisar os itens do seu pedido a qualquer momento clicando no ícone de carrinho no canto superior direito.
+              Você pode revisar os itens do seu orçamento a qualquer momento clicando no ícone de carrinho no canto superior direito.
           </p>
         </CardFooter>
       </Card>

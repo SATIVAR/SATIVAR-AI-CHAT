@@ -74,7 +74,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                         ) : activeOrderId ? (
                             <span className="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400">
                                 <PackageCheck size={16} className="animate-pulse" />
-                                Acompanhando seu pedido...
+                                Acompanhando seu orçamento...
                             </span>
                         ) : "online"}
                     </p>
@@ -88,7 +88,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                                 {totalItems}
                             </span>
                         )}
-                        <span className="sr-only">Ver carrinho</span>
+                        <span className="sr-only">Ver orçamento</span>
                     </Button>
                     <UserMenu client={userDetails} onSave={onUpdateClient} />
                 </div>

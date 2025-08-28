@@ -127,7 +127,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onSubmit, isLoading, 
         <motion.div variants={itemVariants}>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirmar e Enviar Pedido
+              Confirmar e Enviar Orçamento
             </Button>
         </motion.div>
       </motion.form>
