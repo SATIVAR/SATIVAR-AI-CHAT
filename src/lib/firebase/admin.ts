@@ -9,7 +9,7 @@ const serviceAccount = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID as string,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL as string,
   // Esta linha é crucial para formatar a chave privada corretamente
-  privateKey: (process.env.FIREBASE_PRIVATE_KEY as string)?.replace(/\\n/g, '\n'),
+  privateKey: (process.env.FIREBASE_PRIVATE_KEY as string),
 };
 
 // Função para garantir que a inicialização ocorra apenas uma vez
@@ -27,7 +27,11 @@ function initializeAdminApp() {
   try {
     const app = admin.initializeApp({
       // Passa explicitamente as credenciais para o SDK
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert({
+        projectId: serviceAccount.projectId,
+        clientEmail: serviceAccount.clientEmail,
+        privateKey: JSON.parse(serviceAccount.privateKey),
+      }),
     });
     console.log('Firebase Admin inicializado com sucesso!');
     return app;
