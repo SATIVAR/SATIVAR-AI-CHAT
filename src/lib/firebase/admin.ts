@@ -1,5 +1,7 @@
 
 // src/lib/firebase/admin.ts
+import { config } from 'dotenv';
+config(); // Carrega as variáveis de ambiente do .env
 
 import admin from 'firebase-admin';
 import { getApps } from 'firebase-admin/app';
