@@ -2,7 +2,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { Order, OrderStatus } from '@prisma/client';
+import { Order, Order_status } from '@prisma/client';
 import { getStoreStatus } from './store.service';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -12,44 +12,53 @@ import { Order as AppOrder, UserDetails } from '../types'; // Usando tipos da Ap
 type OrderCreateInput = Omit<AppOrder, 'id' | 'createdAt' | 'updatedAt'>;
 
 
-export async function createOrder(order: OrderCreateInput): Promise<string> {
-    const { clientId, clientInfo, items, totalAmount } = order;
+export async function createOrder(orderData: OrderCreateInput): Promise<string> {
+    const generateId = () => {
+        return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    };
 
-    // Garante que o cliente seja atualizado
-    await prisma.client.update({
-        where: { id: clientId },
-        data: {
-            lastOrderAt: new Date(),
-            address: clientInfo.address ? {
-                upsert: {
-                    create: clientInfo.address,
-                    update: clientInfo.address,
-                }
-            } : undefined,
-            name: clientInfo.name,
-        }
-    });
-
-    const newOrder = await prisma.order.create({
-        data: {
-            clientId,
-            clientName: clientInfo.name,
-            clientPhone: clientInfo.phone,
-            clientAddress: clientInfo.address ? `${clientInfo.address.street || ''}, ${clientInfo.address.number || ''}` : 'Retirada no local',
-            totalAmount,
-            status: 'Recebido', // Status inicial
-            OrderItem: {
-                create: items.map(item => ({
-                    productId: item.productId,
-                    productName: item.productName,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                }))
+    try {
+        // Ensure the client exists and update their info
+        const client = await prisma.client.upsert({
+            where: { phone: orderData.clientInfo.phone },
+            create: {
+                id: orderData.clientId,
+                name: orderData.clientInfo.name,
+                phone: orderData.clientInfo.phone,
+                address: orderData.clientInfo.address ? JSON.stringify(orderData.clientInfo.address) : null,
+                associationId: 'cmevpxdbf0000tmmw9106u0s2' // Default for now
+            },
+            update: {
+                name: orderData.clientInfo.name,
+                address: orderData.clientInfo.address ? JSON.stringify(orderData.clientInfo.address) : null,
+                lastOrderAt: new Date()
             }
-        }
-    });
-    
-    return newOrder.id;
+        });
+
+        const order = await prisma.order.create({
+            data: {
+                id: generateId(),
+                clientId: client.id,
+                clientInfo: JSON.stringify(orderData.clientInfo),
+                totalAmount: orderData.totalAmount,
+                status: orderData.status as Order_status,
+                OrderItem: {
+                    create: orderData.items.map(item => ({
+                        id: generateId(),
+                        productId: item.productId,
+                        productName: item.productName,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice
+                    }))
+                }
+            }
+        });
+        
+        return order.id;
+    } catch (error) {
+        console.error('Error creating order:', error);
+        throw new Error('Failed to create order');
+    }
 }
 
 

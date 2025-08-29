@@ -18,12 +18,18 @@ export async function findPatientByWhatsapp(whatsapp: string, associationId: str
 
 export async function createPatient(data: PatientFormData, associationId: string): Promise<{ success: boolean; data?: Patient; error?: string }> {
   try {
+    const generateId = () => {
+      return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    };
+
     const patient = await prisma.patient.create({
       data: {
+        id: generateId(),
         name: data.name,
         whatsapp: data.whatsapp,
         email: data.email || null,
         associationId,
+        updatedAt: new Date(),
       },
     });
 

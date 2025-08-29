@@ -156,10 +156,9 @@ export default function Home() {
   useEffect(() => {
     if (!activeOrderId) return;
     
-    // NOTE: This realtime listener still depends on a client-side Firebase SDK.
-    // In a full Prisma migration, this would be replaced with polling (e.g., SWR, TanStack Query) or a WebSocket solution.
-    // For now, we leave it to demonstrate the concept, but it won't work without a client firebase config.
-    console.warn("Realtime order updates are disabled due to Firestore migration.");
+    // NOTE: Real-time order updates would be implemented with polling (e.g., SWR, TanStack Query) 
+    // or WebSocket solution in the future if needed.
+    console.log("Real-time order updates not implemented in current version.");
 
   }, [activeOrderId, messages, toast, handleClearAfterOrder]); 
 

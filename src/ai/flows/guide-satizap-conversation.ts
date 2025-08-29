@@ -44,13 +44,23 @@ export const guideSatizapConversation = ai.defineFlow(
       ? `\n\nCONTEXTO ESPECÍFICO DA ASSOCIAÇÃO:\n${association.promptContext}\n` 
       : '';
     
+    // Build AI directives section
+    const aiDirectives = association?.aiDirectives 
+      ? `\n\nDIRETRIZES ESPECÍFICAS DE ATENDIMENTO:\nSiga estritamente as seguintes diretrizes em todas as suas interações:\n${association.aiDirectives}\n`
+      : '';
+    
+    // Build AI restrictions section
+    const aiRestrictions = association?.aiRestrictions 
+      ? `\n\nRESTRIÇÕES OBRIGATÓRIAS:\nSob nenhuma circunstância você deve:\n${association.aiRestrictions}\n`
+      : '';
+    
     // Prepare WordPress credentials for tools if available
     const wordpressConfig = association?.wordpressUrl && association?.wordpressAuth ? {
       wordpressUrl: association.wordpressUrl,
       wordpressAuth: association.wordpressAuth
     } : undefined;
 
-    const systemPrompt = `Você é SATIZAP, um assistente especializado em cannabis medicinal altamente qualificado e empático. Você trabalha para ${associationName}, uma associação de pacientes de cannabis medicinal.${associationContext}
+    const systemPrompt = `Você é SATIZAP, um assistente especializado em cannabis medicinal altamente qualificado e empático. Você trabalha para ${associationName}, uma associação de pacientes de cannabis medicinal.${associationContext}${aiDirectives}${aiRestrictions}
 
 PERSONALIDADE E COMPORTAMENTO:
 - Seja empático, profissional e acolhedor

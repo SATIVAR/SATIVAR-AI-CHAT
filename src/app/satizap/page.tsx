@@ -1,15 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PatientForm } from '@/components/chat/patient-form';
-import { PatientFormData, Patient } from '@/lib/types';
+import { PatientOnboarding } from '@/components/chat/patient-onboarding';
+import { PatientFormData } from '@/lib/types';
 
 export default function SatizapPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [associationName, setAssociationName] = useState<string>();
   const router = useRouter();
 
-  const handlePatientSubmit = async (data: PatientFormData) => {
+  // Get association name from headers if available
+  useEffect(() => {
+    const getAssociationInfo = async () => {
+      try {
+        const response = await fetch('/api/tenant-info');
+        if (response.ok) {
+          const data = await response.json();
+          setAssociationName(data.association?.name);
+        }
+      } catch (error) {
+        console.error('Error fetching tenant info:', error);
+      }
+    };
+
+    getAssociationInfo();
+  }, []);
+
+  const handlePatientSubmit = async (data: PatientFormData & { cpf?: string }, isReturning = false) => {
     setIsLoading(true);
     
     try {
@@ -24,7 +42,7 @@ export default function SatizapPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Erro ao cadastrar paciente');
+        throw new Error(result.error || 'Erro ao processar dados do paciente');
       }
 
       // Store patient data in sessionStorage for the chat
@@ -44,7 +62,11 @@ export default function SatizapPage() {
 
   return (
     <div className="min-h-screen">
-      <PatientForm onSubmit={handlePatientSubmit} isLoading={isLoading} />
+      <PatientOnboarding 
+        onSubmit={handlePatientSubmit} 
+        isLoading={isLoading}
+        associationName={associationName}
+      />
     </div>
   );
 }

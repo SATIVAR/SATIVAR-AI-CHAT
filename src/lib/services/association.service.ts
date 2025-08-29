@@ -33,6 +33,9 @@ export async function createAssociation(data: {
     [key: string]: any;
   };
   promptContext?: string;
+  aiDirectives?: string;
+  aiRestrictions?: string;
+  patientsList?: string;
 }): Promise<{ success: boolean; data?: Association; error?: string }> {
   try {
     const createData: any = {
@@ -42,9 +45,18 @@ export async function createAssociation(data: {
       wordpressAuth: JSON.stringify(data.wordpressAuth),
     };
     
-    // Add promptContext only if provided
+    // Add optional fields only if provided
     if (data.promptContext) {
       createData.promptContext = data.promptContext;
+    }
+    if (data.aiDirectives) {
+      createData.aiDirectives = data.aiDirectives;
+    }
+    if (data.aiRestrictions) {
+      createData.aiRestrictions = data.aiRestrictions;
+    }
+    if (data.patientsList) {
+      createData.patientsList = data.patientsList;
     }
     
     const association = await prisma.association.create({
@@ -77,6 +89,9 @@ export async function updateAssociation(
     wordpressUrl: string;
     wordpressAuth: Record<string, any>;
     promptContext: string;
+    aiDirectives: string;
+    aiRestrictions: string;
+    patientsList: string;
     isActive: boolean;
   }>
 ): Promise<{ success: boolean; data?: Association; error?: string }> {

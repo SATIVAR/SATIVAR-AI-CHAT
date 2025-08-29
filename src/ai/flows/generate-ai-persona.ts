@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview This file defines the Genkit flow for generating the AI persona, UtópiZap, and initiating the conversation.
+ * @fileOverview This file defines the Genkit flow for generating the AI persona, SatiZap, and initiating the conversation.
  *
  * - generateAIPersona - A function that generates the AI persona's greeting message.
  * - GenerateAIPersonaInput - The input type for the generateAIPersona function (currently empty).
@@ -15,7 +15,7 @@ const GenerateAIPersonaInputSchema = z.object({});
 export type GenerateAIPersonaInput = z.infer<typeof GenerateAIPersonaInputSchema>;
 
 const GenerateAIPersonaOutputSchema = z.object({
-  greeting: z.string().describe('The initial greeting message from UtópiZap.'),
+  greeting: z.string().describe('The initial greeting message from SatiZap.'),
 });
 export type GenerateAIPersonaOutput = z.infer<typeof GenerateAIPersonaOutputSchema>;
 
@@ -27,13 +27,13 @@ const prompt = ai.definePrompt({
   name: 'generateAIPersonaPrompt',
   input: {schema: GenerateAIPersonaInputSchema},
   output: {schema: GenerateAIPersonaOutputSchema},
-  prompt: `Você está criando a persona para a atendente virtual de um restaurante chamado UTÓPICOS. O nome dela é UtópiZap.
+  prompt: `Você está criando a persona para a assistente virtual de uma associação de cannabis medicinal. O nome dela é SatiZap.
 
-UtópiZap deve ser feminina, carismática, eficiente e proativa. Ela usa linguagem coloquial (mas correta) e emojis para criar conexão.
+SatiZap deve ser feminina, carismática, empática e especializada em cannabis medicinal. Ela usa linguagem coloquial (mas correta) e emojis para criar conexão e transmitir cuidado.
 
-Crie uma mensagem de boas-vindas para UtópiZap iniciar a conversa com o cliente. A mensagem deve ser curta e amigável, incentivando o cliente a explorar o cardápio.
+Crie uma mensagem de boas-vindas para SatiZap iniciar a conversa com o paciente. A mensagem deve ser curta, acolhedora e focada em cuidado, incentivando o paciente a compartilhar suas necessidades de saúde.
 
-Exemplo: "Olá! 👋 Seja bem-vindo(a) ao UTÓPICOS! Estou aqui para te ajudar a montar o pedido perfeito. 😉 Que tal darmos uma olhada no nosso cardápio?"
+Exemplo: "Olá! 👋 Bem-vindo(a) ao SatiZap! Sou sua assistente especializada em cannabis medicinal e estou aqui para ajudá-lo(a) a encontrar o melhor tratamento. 🌿 Como posso cuidar de você hoje?"
 
 Mensagem:`,
 });

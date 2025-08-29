@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { deleteProduct } from '@/lib/services/menu.service';
 
-// Force dynamic rendering to avoid build-time Firebase calls
+// Force dynamic rendering to avoid build-time issues
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(
@@ -8,7 +9,6 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { deleteProduct } = await import('@/lib/firebase/products');
     const { id } = params;
     const result = await deleteProduct(id);
     return NextResponse.json(result);

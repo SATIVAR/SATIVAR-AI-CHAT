@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAllCategories, createCategory, updateCategory } from '@/lib/services/menu.service';
 
-// Force dynamic rendering to avoid build-time Firebase calls
+// Force dynamic rendering to avoid build-time issues
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Dynamic import to avoid build-time Firebase initialization
-    const { getAllCategories } = await import('@/lib/firebase/categories');
     const categories = await getAllCategories();
     return NextResponse.json({ success: true, categories });
   } catch (error) {
@@ -20,7 +19,6 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { createCategory } = await import('@/lib/firebase/categories');
     const formData = await request.formData();
     
     const categoryData = {
@@ -45,7 +43,6 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { updateCategory } = await import('@/lib/firebase/categories');
     const formData = await request.formData();
     const id = formData.get('id') as string;
     

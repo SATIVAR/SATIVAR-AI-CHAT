@@ -1,10 +1,12 @@
 
 'use server';
 
-import prisma from '@/lib/prisma';
-import { StoreStatus } from '@prisma/client';
-
-const STORE_STATUS_RECORD_ID = 'clxsmf0p9000010mbbhkce1s6'; // Use um ID fixo para o registro único
+// Simple in-memory store status (in a real app, this would be in the database)
+let storeStatus = {
+  isOpen: true, // Default to open for testing
+  openedAt: new Date(),
+  closedAt: null as Date | null,
+};
 
 interface StoreStatusResult {
   isOpen: boolean;
@@ -12,58 +14,32 @@ interface StoreStatusResult {
   closedAt: Date | null;
 }
 
-async function ensureStoreStatusExists(): Promise<StoreStatus> {
-    let status = await prisma.storeStatus.findUnique({
-        where: { id: STORE_STATUS_RECORD_ID }
-    });
-
-    if (!status) {
-        status = await prisma.storeStatus.create({
-            data: {
-                id: STORE_STATUS_RECORD_ID,
-                isOpen: false,
-                closedAt: new Date()
-            }
-        });
-    }
-    return status;
-}
-
-
 export async function getStoreStatus(): Promise<StoreStatusResult> {
-    const status = await ensureStoreStatusExists();
-    return {
-        isOpen: status.isOpen,
-        openedAt: status.openedAt,
-        closedAt: status.closedAt,
-    };
+  return {
+    isOpen: storeStatus.isOpen,
+    openedAt: storeStatus.openedAt,
+    closedAt: storeStatus.closedAt,
+  };
 }
 
 export async function toggleStoreStatus(shouldBeOpen: boolean): Promise<{ success: boolean; error?: string }> {
   try {
-    await ensureStoreStatusExists(); // Garante que o registro exista
-
     if (shouldBeOpen) {
-      await prisma.storeStatus.update({
-        where: { id: STORE_STATUS_RECORD_ID },
-        data: {
-            isOpen: true,
-            openedAt: new Date(),
-            closedAt: null,
-        }
-      });
+      storeStatus = {
+        isOpen: true,
+        openedAt: new Date(),
+        closedAt: null,
+      };
     } else {
-      await prisma.storeStatus.update({
-        where: { id: STORE_STATUS_RECORD_ID },
-        data: {
-            isOpen: false,
-            closedAt: new Date(),
-        }
-      });
+      storeStatus = {
+        ...storeStatus,
+        isOpen: false,
+        closedAt: new Date(),
+      };
     }
     return { success: true };
   } catch (error: any) {
-    console.error("Error toggling store status:", error);
+    console.error('Error toggling store status:', error);
     return { success: false, error: 'Failed to update store status.' };
   }
 }

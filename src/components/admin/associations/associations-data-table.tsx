@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, PlusCircle, ExternalLink } from 'lucide-react';
 import { Association } from '@/lib/types';
-import AssociationForm from './association-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +29,6 @@ export function AssociationsDataTable<TData extends Association>({
     
     const { toast } = useToast();
     const router = useRouter();
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedAssociation, setSelectedAssociation] = useState<Association | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentData, setCurrentData] = useState<TData[]>(data);
 
@@ -41,55 +38,6 @@ export function AssociationsDataTable<TData extends Association>({
     }, [data]);
 
     // API handling functions
-    const handleSaveAssociation = async (associationData: Partial<Association>): Promise<{ success: boolean, error?: string }> => {
-        try {
-            let response;
-            
-            if (associationData.id) {
-                // Update existing association
-                const { id, ...dataToUpdate } = associationData;
-                response = await fetch(`/api/admin/associations/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(dataToUpdate),
-                });
-            } else {
-                // Create new association
-                response = await fetch('/api/admin/associations', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(associationData),
-                });
-            }
-
-            const result = await response.json();
-            
-            if (result.success) {
-                // Update local state and refresh page
-                if (associationData.id) {
-                    // Update existing item in local state
-                    setCurrentData(prev => prev.map(item => 
-                        item.id === associationData.id ? { ...item, ...result.data } : item
-                    ));
-                } else {
-                    // Add new item to local state
-                    setCurrentData(prev => [...prev, result.data]);
-                }
-                // Refresh the page to ensure server state sync
-                setTimeout(() => router.refresh(), 100);
-                return { success: true };
-            } else {
-                return { success: false, error: result.error };
-            }
-        } catch (error) {
-            console.error('Error saving association:', error);
-            return { success: false, error: 'Erro interno do servidor' };
-        }
-    };
 
     const handleDeleteAssociation = async (id: string): Promise<{ success: boolean, error?: string }> => {
         try {
@@ -182,7 +130,7 @@ export function AssociationsDataTable<TData extends Association>({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => { setSelectedAssociation(association); setIsFormOpen(true); }}>
+                                <DropdownMenuItem onClick={() => router.push(`/admin/associations/${association.id}/edit`)}>
                                     Editar
                                 </DropdownMenuItem>
                                 <AlertDialogTrigger asChild>
@@ -217,7 +165,7 @@ export function AssociationsDataTable<TData extends Association>({
                 );
             },
         },
-    ], [toast, handleDeleteAssociation, setSelectedAssociation, setIsFormOpen]);
+    ], [toast, handleDeleteAssociation, router]);
 
     const table = useReactTable({
         data: filteredData,
@@ -234,7 +182,7 @@ export function AssociationsDataTable<TData extends Association>({
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className="max-w-sm"
                 />
-                <Button onClick={() => { setSelectedAssociation(null); setIsFormOpen(true); }}>
+                <Button onClick={() => router.push('/admin/associations/new')}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Adicionar Associação
                 </Button>
@@ -275,12 +223,6 @@ export function AssociationsDataTable<TData extends Association>({
                     </TableBody>
                 </Table>
             </div>
-            <AssociationForm 
-                isOpen={isFormOpen} 
-                setIsOpen={setIsFormOpen}
-                association={selectedAssociation}
-                onSave={handleSaveAssociation}
-            />
         </div>
     );
 }

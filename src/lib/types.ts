@@ -1,5 +1,5 @@
 
-import { Product as PrismaProduct, ProductCategory as PrismaCategory, OrderStatus, Patient as PrismaPatient, Conversation as PrismaConversation, Message as PrismaMessage, ConversationStatus, SenderType, Association as PrismaAssociation } from '@prisma/client';
+import { Product as PrismaProduct, ProductCategory as PrismaCategory, Order_status, Patient as PrismaPatient, Conversation as PrismaConversation, Message as PrismaMessage, Conversation_status, Message_senderType, Association as PrismaAssociation } from '@prisma/client';
 
 export interface ProductCategory extends PrismaCategory {}
 
@@ -101,6 +101,11 @@ export interface Client {
     lastOrderAt: Date;
 }
 
+// Type aliases for easier usage
+export type OrderStatus = Order_status;
+export type ConversationStatus = Conversation_status;
+export type SenderType = Message_senderType;
+
 export type ConversationState = 
     | 'AguardandoInicio'
     | 'MostrandoCategorias'
@@ -114,6 +119,7 @@ export interface PatientFormData {
   name: string;
   whatsapp: string;
   email?: string;
+  cpf?: string;
 }
 
 export interface ConversationMessage extends Omit<PrismaMessage, 'metadata'> {
@@ -148,13 +154,14 @@ export interface AttendantSession {
 }
 
 // Multi-tenant types
-export interface Association extends PrismaAssociation {
+export interface Association extends Omit<PrismaAssociation, 'wordpressAuth'> {
   wordpressAuth: {
     apiKey: string;
     username: string;
     password: string;
     [key: string]: any;
   };
+  patientsList?: string;
 }
 
 

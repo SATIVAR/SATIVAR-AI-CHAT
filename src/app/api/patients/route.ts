@@ -8,6 +8,7 @@ interface PatientRegistrationRequest {
   name: string;
   whatsapp: string;
   email?: string;
+  cpf?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: PatientRegistrationRequest = await request.json();
-    const { name, whatsapp, email } = body;
+    const { name, whatsapp, email, cpf } = body;
 
     // Validate required fields
     if (!name || !whatsapp) {
@@ -48,6 +49,9 @@ export async function POST(request: NextRequest) {
       whatsapp: cleanWhatsapp,
       email: email?.trim() || undefined,
     };
+
+    // Add CPF to metadata if provided
+    const patientMetadata = cpf ? { cpf: cpf.replace(/\D/g, '') } : undefined;
 
     // Find or create patient within the association
     const patientResult = await findOrCreatePatient(patientData, tenantContext.association.id);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,9 +16,12 @@ import {
   Image as ImageIcon, 
   Loader2,
   ArrowLeft,
-  AlertTriangle 
+  AlertTriangle,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { Patient, ConversationMessage, ConversationStatus } from '@/lib/types';
+import { useSocket } from '@/hooks/use-socket';
 
 export default function SatizapChatPage() {
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -29,7 +32,51 @@ export default function SatizapChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [conversationStatus, setConversationStatus] = useState<ConversationStatus>('com_ia');
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const router = useRouter();
+
+  // Socket.IO integration
+  const { 
+    isConnected, 
+    isConnecting,
+    sendMessage: socketSendMessage,
+    joinConversation,
+    startTyping,
+    stopTyping,
+    markMessageAsRead
+  } = useSocket({
+    conversationId: conversationId || undefined,
+    patientId: patient?.id,
+    autoConnect: false // We'll connect manually after loading conversation
+  }, {
+    onMessageReceived: useCallback((message: ConversationMessage) => {
+      // Only add messages that aren't already in our state
+      setMessages(prev => {
+        const exists = prev.some(m => m.id === message.id);
+        if (exists) return prev;
+        return [...prev, message];
+      });
+    }, []),
+    onConversationStatusUpdated: useCallback((data: { 
+      conversationId: string; 
+      status: 'com_ia' | 'fila_humano' | 'com_humano' | 'resolvida';
+      attendantId?: string;
+    }) => {
+      if (data.conversationId === conversationId) {
+        setConversationStatus(data.status);
+      }
+    }, [conversationId]),
+    onUserTypingStart: useCallback((data: { socketId: string; userType: 'patient' | 'attendant' }) => {
+      if (data.userType === 'attendant') {
+        setIsTyping(true);
+      }
+    }, []),
+    onUserTypingStop: useCallback((data: { socketId: string; userType: 'patient' | 'attendant' }) => {
+      if (data.userType === 'attendant') {
+        setIsTyping(false);
+      }
+    }, [])
+  });
 
   useEffect(() => {
     // Load patient data from sessionStorage
@@ -54,6 +101,11 @@ export default function SatizapChatPage() {
       if (response.ok && result.conversation) {
         setMessages(result.conversation.messages || []);
         setConversationStatus(result.conversation.status);
+        
+        // Connect to Socket.IO and join conversation room after loading messages
+        if (patient) {
+          joinConversation(convId, patient.id);
+        }
       }
     } catch (error) {
       console.error('Error loading conversation:', error);
@@ -69,19 +121,33 @@ export default function SatizapChatPage() {
     setNewMessage('');
     setIsSending(true);
 
+    // Stop typing indicator
+    stopTyping(conversationId, 'patient');
+
     // Add user message immediately to UI
     const userMessage: ConversationMessage = {
       id: `temp-${Date.now()}`,
       conversationId,
       content: messageText,
       senderType: 'paciente',
-      senderId: null,
+      senderId: patient?.id || null,
       timestamp: new Date(),
       isRead: false,
     };
     setMessages(prev => [...prev, userMessage]);
 
     try {
+      // Send via Socket.IO for real-time delivery
+      if (isConnected) {
+        socketSendMessage({
+          conversationId,
+          content: messageText,
+          senderType: 'paciente',
+          senderId: patient?.id,
+        });
+      }
+
+      // Also send via HTTP API for AI processing and persistence backup
       const response = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,7 +161,7 @@ export default function SatizapChatPage() {
       const result = await response.json();
 
       if (response.ok) {
-        // Replace temp message with real one and add AI response
+        // Replace temp message with real one from database
         setMessages(prev => {
           const filtered = prev.filter(m => m.id !== userMessage.id);
           const newMessages = [result.userMessage];
@@ -190,6 +256,24 @@ ${extractedData.prescriptionData?.containsCannabis ?
             </div>
             <div className="flex items-center space-x-2">
               {getStatusBadge()}
+              
+              {/* Connection Status */}
+              <div className="flex items-center space-x-1">
+                {isConnected ? (
+                  <div title="Conectado">
+                    <Wifi className="h-4 w-4 text-green-500" />
+                  </div>
+                ) : isConnecting ? (
+                  <div title="Conectando...">
+                    <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
+                  </div>
+                ) : (
+                  <div title="Desconectado">
+                    <WifiOff className="h-4 w-4 text-red-500" />
+                  </div>
+                )}
+              </div>
+              
               {patient && (
                 <div className="text-right text-sm">
                   <p className="font-medium">{patient.name}</p>
@@ -250,6 +334,28 @@ ${extractedData.prescriptionData?.containsCannabis ?
                     </div>
                   </div>
                 ))}
+                
+                {/* Typing Indicator */}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                          <Bot className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="bg-gray-100 rounded-lg px-3 py-2">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* AI Processing Indicator */}
                 {isSending && (
                   <div className="flex justify-start">
                     <div className="flex items-center space-x-2">
@@ -293,9 +399,30 @@ ${extractedData.prescriptionData?.containsCannabis ?
               </Button>
               <Input
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  // Send typing indicator
+                  if (conversationId && isConnected) {
+                    if (e.target.value.trim() && !isSending) {
+                      startTyping(conversationId, 'patient');
+                    } else {
+                      stopTyping(conversationId, 'patient');
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  // Stop typing when input loses focus
+                  if (conversationId && isConnected) {
+                    stopTyping(conversationId, 'patient');
+                  }
+                }}
                 placeholder="Digite sua mensagem..."
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
                 disabled={isSending || conversationStatus === 'resolvida'}
                 className="flex-1"
               />

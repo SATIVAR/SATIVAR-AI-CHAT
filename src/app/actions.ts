@@ -142,7 +142,8 @@ export async function getAiResponse(
   history: Message[],
   currentOrder: OrderItem[],
   client: Client,
-  currentState: ConversationState
+  currentState: ConversationState,
+  association?: any
 ): Promise<{ text: string; components?: DynamicComponentData[] }> {
     
   const knowledgeBase = await getKnowledgeBase();
@@ -154,6 +155,7 @@ export async function getAiResponse(
       currentOrder: JSON.stringify(currentOrder),
       client: JSON.stringify(client),
       currentState,
+      association,
   });
   
   const components = mapAiComponentsToAppComponents(response.components || []);

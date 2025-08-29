@@ -38,13 +38,16 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, wordpressUrl, wordpressAuth, promptContext, isActive } = body;
+    const { name, wordpressUrl, wordpressAuth, promptContext, aiDirectives, aiRestrictions, patientsList, isActive } = body;
 
     const result = await updateAssociation(params.id, {
       name,
       wordpressUrl,
       wordpressAuth: wordpressAuth ? (typeof wordpressAuth === 'string' ? JSON.parse(wordpressAuth) : wordpressAuth) : undefined,
       promptContext,
+      aiDirectives,
+      aiRestrictions,
+      patientsList,
       isActive,
     });
 
