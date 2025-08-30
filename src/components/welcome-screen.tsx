@@ -61,7 +61,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLogin, isLoading }) => 
         >
             <div className="rounded-2xl border bg-card/80 p-8 text-center shadow-2xl backdrop-blur-sm">
                 <motion.div variants={itemVariants} className="mb-6 flex flex-col items-center gap-4">
-                    <Logo className="h-20 w-20 text-primary" />
+                    <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
+                        <Logo className="h-10 w-10 text-white" />
+                    </div>
                     <h1 className="text-3xl font-bold text-card-foreground">Bem-vindo(a) ao SatiZap!</h1>
                     <p className="text-muted-foreground">Para começar, precisamos de algumas informações para dar início ao seu atendimento de forma segura e personalizada.</p>
                 </motion.div>

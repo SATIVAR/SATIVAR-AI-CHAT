@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, subdomain, wordpressUrl, wordpressAuth, promptContext, aiDirectives, aiRestrictions, patientsList } = body;
+    const { name, subdomain, wordpressUrl, wordpressAuth, apiConfig, promptContext, aiDirectives, aiRestrictions, patientsList, publicDisplayName, logoUrl, welcomeMessage } = body;
 
     if (!name || !subdomain || !wordpressUrl || !wordpressAuth) {
       return NextResponse.json(
@@ -37,10 +37,14 @@ export async function POST(request: NextRequest) {
       subdomain,
       wordpressUrl,
       wordpressAuth: typeof wordpressAuth === 'string' ? JSON.parse(wordpressAuth) : wordpressAuth,
+      apiConfig,
       promptContext,
       aiDirectives,
       aiRestrictions,
       patientsList,
+      publicDisplayName,
+      logoUrl,
+      welcomeMessage,
     });
 
     if (!result.success) {

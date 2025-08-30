@@ -12,7 +12,17 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "seed:test": "node scripts/seed-test-association.js",
+    "db:health": "node scripts/verify-database-health.js",
+    "env:health": "node scripts/verify-environment-health.js",
+    "env:quick": "node scripts/quick-health-check.js",
+    "db:setup": "npm run seed:test && npm run db:health",
+    "dev:setup": "npm run seed:test && npm run env:health",
+    "test:middleware": "node scripts/test-middleware-graceful-handling.js",
+    "verify:middleware": "node scripts/verify-middleware-implementation.js",
+    "test:urls": "node scripts/test-all-url-scenarios.js",
+    "test:functional": "node scripts/test-functional-scenarios.js"
   },
   "dependencies": {
     "@fontsource/pt-sans": "^5.0.21",

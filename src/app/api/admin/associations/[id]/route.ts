@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateAssociation, deleteAssociation } from '@/lib/services/association.service';
-import prisma from '@/lib/prisma';
+import { updateAssociation, deleteAssociation, getAssociationById } from '@/lib/services/association.service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const association = await prisma.association.findUnique({
-      where: { id: params.id },
-    });
+    const { id } = await params;
+    const association = await getAssociationById(id);
 
     if (!association) {
       return NextResponse.json(
@@ -34,20 +32,28 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
-    const { name, wordpressUrl, wordpressAuth, promptContext, aiDirectives, aiRestrictions, patientsList, isActive } = body;
+    console.log('API Route - Received data:', body);
+    const { name, subdomain, wordpressUrl, wordpressUrlDev, wordpressAuth, apiConfig, promptContext, aiDirectives, aiRestrictions, patientsList, publicDisplayName, logoUrl, welcomeMessage, isActive } = body;
 
-    const result = await updateAssociation(params.id, {
+    const result = await updateAssociation(id, {
       name,
+      subdomain,
       wordpressUrl,
+      wordpressUrlDev,
       wordpressAuth: wordpressAuth ? (typeof wordpressAuth === 'string' ? JSON.parse(wordpressAuth) : wordpressAuth) : undefined,
+      apiConfig,
       promptContext,
       aiDirectives,
       aiRestrictions,
       patientsList,
+      publicDisplayName,
+      logoUrl,
+      welcomeMessage,
       isActive,
     });
 
@@ -74,10 +80,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const result = await deleteAssociation(params.id);
+    const { id } = await params;
+    const result = await deleteAssociation(id);
 
     if (!result.success) {
       return NextResponse.json(

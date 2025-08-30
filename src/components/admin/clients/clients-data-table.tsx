@@ -20,20 +20,17 @@ import { Client } from '@/lib/types';
 import ClientForm from './client-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { saveClientAction, deleteClientAction } from '@/app/admin/clients/actions';
 
 
 interface DataTableProps<TData extends Client, TValue> {
     data: TData[];
     pageCount: number;
-    onSave: (client: Partial<Client>) => Promise<{ success: boolean, error?: string }>;
-    onDelete: (id: string) => Promise<{ success: boolean, error?: string }>;
 }
 
 export function ClientsDataTable<TData extends Client, TValue>({
     data,
-    pageCount,
-    onSave,
-    onDelete
+    pageCount
 }: DataTableProps<TData, TValue>) {
     
     const { toast } = useToast();
@@ -80,7 +77,7 @@ export function ClientsDataTable<TData extends Client, TValue>({
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => { setSelectedClient(client); setIsFormOpen(true); }}>
-                                    Editar
+                                    Visualizar
                                 </DropdownMenuItem>
                                 <AlertDialogTrigger asChild>
                                     <DropdownMenuItem className="text-red-500 hover:text-red-600 focus:text-red-600">
@@ -99,7 +96,7 @@ export function ClientsDataTable<TData extends Client, TValue>({
                              <AlertDialogFooter>
                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                  <AlertDialogAction onClick={async () => {
-                                      const result = await onDelete(client.id!);
+                                      const result = await deleteClientAction(client.id!);
                                       if (result.success) {
                                         toast({ title: 'Sucesso!', description: 'Cliente excluído.' });
                                       } else {
@@ -162,10 +159,9 @@ export function ClientsDataTable<TData extends Client, TValue>({
                     onChange={(event) => handleSearch(event.currentTarget.value)}
                     className="max-w-sm"
                 />
-                <Button onClick={() => { setSelectedClient(null); setIsFormOpen(true); }}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Cliente
-                </Button>
+                <div className="text-sm text-muted-foreground">
+                    Pacientes são sincronizados automaticamente via chat
+                </div>
             </div>
             <div className="rounded-md border">
                 <Table>
@@ -225,7 +221,6 @@ export function ClientsDataTable<TData extends Client, TValue>({
                 isOpen={isFormOpen} 
                 setIsOpen={setIsFormOpen}
                 client={selectedClient}
-                onSave={onSave}
             />
         </div>
     );

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Error Pages</title>
+</head>
+<body>
+    <h1>Test Error Pages</h1>
+    <p>Click the links below to test the error pages:</p>
+    
+    <ul>
+        <li><a href="http://localhost:9002/invalidtenant" target="_blank">Test Invalid Tenant (should redirect to dev-error)</a></li>
+        <li><a href="http://localhost:9002/association-not-found" target="_blank">Association Not Found Page</a></li>
+        <li><a href="http://localhost:9002/dev-error?type=tenant-not-found&message=Test%20error&tenant=test" target="_blank">Dev Error Page (direct)</a></li>
+        <li><a href="http://localhost:9002/dev-docs" target="_blank">Dev Documentation Page</a></li>
+        <li><a href="http://localhost:9002/" target="_blank">Hero Section (should work)</a></li>
+        <li><a href="http://localhost:9002/sativar" target="_blank">Sativar Tenant (should work if seeded)</a></li>
+    </ul>
+    
+    <h2>Manual Testing Instructions:</h2>
+    <ol>
+        <li>Open each link in a new tab</li>
+        <li>Verify that invalid tenants redirect to dev-error page in development</li>
+        <li>Check that error pages have proper debugging information</li>
+        <li>Verify that links to scripts and documentation work</li>
+        <li>Test that valid routes (/, /admin, /sativar) work correctly</li>
+    </ol>
+</body>
+</html>

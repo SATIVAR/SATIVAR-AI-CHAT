@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findPatientByWhatsapp } from '@/lib/services/patient.service';
 import { getTenantContext } from '@/lib/middleware/tenant';
 
+/**
+ * @deprecated This endpoint is being replaced by /api/patients/validate-whatsapp
+ * Keeping for backward compatibility during transition
+ */
 export async function POST(request: NextRequest) {
   try {
     // Get tenant context from middleware
@@ -23,26 +26,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Look for existing patient within this association
-    const existingPatient = await findPatientByWhatsapp(whatsapp, tenantContext.association.id);
-
-    if (existingPatient) {
+    // Redirect to new validation endpoint
+    const validateUrl = new URL('/api/patients/validate-whatsapp', request.url);
+    
+    const validateResponse = await fetch(validateUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Forward tenant headers
+        'host': request.headers.get('host') || ''
+      },
+      body: JSON.stringify({ whatsapp })
+    });
+    
+    const validateResult = await validateResponse.json();
+    
+    if (validateResult.status === 'patient_found') {
       return NextResponse.json({
         exists: true,
-        patient: {
-          id: existingPatient.id,
-          name: existingPatient.name,
-          whatsapp: existingPatient.whatsapp,
-        }
+        patient: validateResult.patient
       });
     }
-
+    
     return NextResponse.json({
       exists: false
     });
 
   } catch (error) {
-    console.error('Error in patient lookup:', error);
+    console.error('Error in patient lookup (legacy):', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

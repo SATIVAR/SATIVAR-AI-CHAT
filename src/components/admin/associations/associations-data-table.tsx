@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ExternalLink, Monitor } from 'lucide-react';
 import { Association } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -82,13 +82,24 @@ export function AssociationsDataTable<TData extends Association>({
                     <code className="text-sm bg-muted px-2 py-1 rounded">
                         {row.original.subdomain}
                     </code>
-                    <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => window.open(`https://${row.original.subdomain}.satizap.com`, '_blank')}
-                    >
-                        <ExternalLink className="h-3 w-3" />
-                    </Button>
+                    <div className="flex gap-1">
+                        <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => window.open(`https://${row.original.subdomain}.satizap.com`, '_blank')}
+                            title="Abrir site de produção"
+                        >
+                            <ExternalLink className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => window.open(`http://localhost:9002/${row.original.subdomain}`, '_blank')}
+                            title="Testar localmente"
+                        >
+                            <Monitor className="h-3 w-3" />
+                        </Button>
+                    </div>
                 </div>
             )
         },

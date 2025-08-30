@@ -4,18 +4,25 @@ import { Message_senderType, Conversation_status } from '@prisma/client';
 
 export async function createConversation(patientId: string): Promise<{ success: boolean; data?: ConversationData; error?: string }> {
   try {
+    // Generate a unique ID for the conversation
+    const generateId = () => {
+      return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    };
+
     const conversation = await prisma.conversation.create({
       data: {
+        id: generateId(),
         patientId,
         status: 'com_ia',
+        updatedAt: new Date(),
       },
       include: {
-        patient: {
+        Patient: {
           include: {
             Association: true,
           },
         },
-        messages: {
+        Message: {
           orderBy: { timestamp: 'asc' },
         },
       },
@@ -38,12 +45,12 @@ export async function findActiveConversation(patientId: string): Promise<Convers
         },
       },
       include: {
-        patient: {
+        Patient: {
           include: {
             Association: true,
           },
         },
-        messages: {
+        Message: {
           orderBy: { timestamp: 'asc' },
         },
       },
@@ -82,13 +89,19 @@ export async function addMessage(
   metadata?: Record<string, any>
 ): Promise<{ success: boolean; data?: ConversationMessage; error?: string }> {
   try {
+    // Generate a unique ID for the message
+    const generateId = () => {
+      return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    };
+
     const message = await prisma.message.create({
       data: {
+        id: generateId(),
         conversationId,
         content,
         senderType,
         senderId,
-        metadata: metadata || null,
+        metadata: metadata ? JSON.stringify(metadata) : null,
       },
     });
 
@@ -126,12 +139,12 @@ export async function getConversationById(conversationId: string): Promise<Conve
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        patient: {
+        Patient: {
           include: {
             Association: true,
           },
         },
-        messages: {
+        Message: {
           orderBy: { timestamp: 'asc' },
         },
       },
@@ -151,8 +164,8 @@ export async function getConversationsInQueue(): Promise<ConversationData[]> {
         status: 'fila_humano',
       },
       include: {
-        patient: true,
-        messages: {
+        Patient: true,
+        Message: {
           orderBy: { timestamp: 'asc' },
           take: 1, // Just get the last message for preview
         },
@@ -175,8 +188,8 @@ export async function getAttendantConversations(attendantId: string): Promise<Co
         status: 'com_humano',
       },
       include: {
-        patient: true,
-        messages: {
+        Patient: true,
+        Message: {
           orderBy: { timestamp: 'asc' },
         },
       },

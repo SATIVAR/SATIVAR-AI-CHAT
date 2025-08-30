@@ -3,10 +3,11 @@
 
 import { generateAIPersona } from '@/ai/flows/generate-ai-persona';
 import { guideOrderingWithAI, GuideOrderingWithAIOutput } from '@/ai/flows/guide-ordering-with-ai';
+import { hybridAIOrchestrator, HybridAIInput } from '@/ai/flows/hybrid-ai-orchestrator';
 import { findClientByPhone, createClient as createClientInDb, updateClient as updateClientInDb } from '@/lib/services/client.service';
 import { getAllProducts, getAllCategories } from '@/lib/services/menu.service';
 import { createOrder } from '@/lib/services/order.service';
-import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu, ConversationState, ProductCardData, QuickReplyButtonData, OrderSummaryCardData, OrderControlButtonsData } from '@/lib/types';
+import { DynamicComponentData, Message, Order, OrderItem, UserDetails, Client, Menu, ConversationState, ProductCardData, QuickReplyButtonData, OrderSummaryCardData, OrderControlButtonsData, Association } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
 import { Client as PrismaClient } from '@prisma/client';
 
@@ -74,7 +75,15 @@ export async function getInitialGreeting(clientName?: string): Promise<string> {
 }
 
 export async function updateClient(id: string, data: Partial<Client>): Promise<{success: boolean, error?: string}> {
-    return updateClientInDb(id, data);
+    // Convert the client data to database format
+    const dbData: any = {
+        ...data,
+        address: data.address && typeof data.address === 'object' 
+            ? JSON.stringify(data.address) 
+            : data.address
+    };
+    
+    return updateClientInDb(id, dbData);
 }
 
 export const getKnowledgeBase = unstable_cache(
@@ -161,6 +170,71 @@ export async function getAiResponse(
   const components = mapAiComponentsToAppComponents(response.components || []);
 
   return { text: response.text, components };
+}
+
+/**
+ * Phase 3: Hybrid AI Response Function
+ * Uses the new orchestration approach to minimize token costs
+ * while maintaining intelligent decision-making.
+ */
+export async function getHybridAiResponse(
+  conversationId: string,
+  history: Message[],
+  currentOrder: OrderItem[],
+  client: Client,
+  association: Association
+): Promise<{ text: string; components?: DynamicComponentData[] }> {
+  
+  // Use the latest message as the patient message
+  const patientMessage = history[history.length - 1]?.content || '';
+  
+  // Format conversation history for the orchestrator
+  const conversationHistory = history.map(msg => ({
+    role: msg.role === 'user' ? 'paciente' as const : msg.role === 'ai' ? 'ia' as const : msg.role,
+    content: msg.content,
+    timestamp: msg.timestamp.toISOString()
+  }));
+  
+  // Prepare input for hybrid orchestrator
+  const hybridInput: HybridAIInput = {
+    conversationId,
+    patientMessage,
+    conversationHistory,
+    currentOrder: currentOrder.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity
+    })),
+    patient: {
+      id: client.id,
+      name: client.name,
+      whatsapp: client.phone,
+      email: client.address?.street // Temporary mapping
+    },
+    association
+  };
+  
+  try {
+    // Use hybrid orchestrator instead of direct AI
+    const response = await hybridAIOrchestrator(hybridInput);
+    
+    // Convert response components to app format
+    const components = response.components && Array.isArray(response.components)
+      ? mapAiComponentsToAppComponents(response.components as any[])
+      : [];
+    
+    return { 
+      text: response.text as string, 
+      components 
+    };
+    
+  } catch (error) {
+    console.error('Error in hybrid AI response:', error);
+    
+    // Fallback to original method if hybrid fails
+    return await getAiResponse(history, currentOrder, client, 'AguardandoInicio', association);
+  }
 }
 
 export async function submitOrder(client: Client, orderItems: OrderItem[]): Promise<{ success: boolean; orderId?: string }> {

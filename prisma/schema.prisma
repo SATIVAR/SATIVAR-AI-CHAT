@@ -8,23 +8,39 @@ datasource db {
 }
 
 model Association {
-  id              String            @id @default(cuid())
-  name            String
-  subdomain       String            @unique
-  wordpressUrl    String
-  wordpressAuth   String            @db.LongText
-  promptContext   String?           @db.LongText
-  aiDirectives    String?           @db.LongText
-  aiRestrictions  String?           @db.LongText
-  patientsList    String?           @db.LongText
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  Client          Client[]
-  Owner           Owner[]
-  Patient         Patient[]
-  Product         Product[]
-  ProductCategory ProductCategory[]
+  id                           String              @id @default(cuid())
+  name                         String
+  subdomain                    String              @unique
+  wordpressUrl                 String
+  wordpressUrlDev              String?             @db.Text
+  wordpressAuth                String              @db.LongText
+  isActive                     Boolean             @default(true)
+  createdAt                    DateTime            @default(now())
+  updatedAt                    DateTime            @updatedAt
+  promptContext                String?             @db.LongText
+  aiDirectives                 String?             @db.LongText
+  aiRestrictions               String?             @db.LongText
+  patientsList                 String?             @db.LongText
+  logoUrl                      String?
+  publicDisplayName            String?
+  welcomeMessage               String?             @db.Text
+  descricaoPublica             String?             @db.Text
+  apiConfig                    String?             @db.LongText
+  chavePix                     String?             @db.Text
+  dadosBancariosFormatados     String?             @db.Text
+  diasPrazoProducao            Int?                @default(3)
+  regrasDesconto               String?             @db.LongText
+  templatePedidoConfirmado     String?             @db.Text
+  templatePrazoEntrega         String?             @db.Text
+  templateSaudacaoNovoPaciente String?             @db.Text
+  templateSolicitacaoReceita   String?             @db.Text
+  valorFretePadrao             Float?              @default(0)
+  Client                       Client[]
+  Owner                        Owner[]
+  Patient                      Patient[]
+  Product                      Product[]
+  ProductCategory              ProductCategory[]
+  AssociationMembers           AssociationMember[]
 }
 
 model Client {
@@ -99,6 +115,35 @@ model OrderItem {
   @@index([productId], map: "OrderItem_productId_fkey")
 }
 
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String?
+  name                String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  isActive            Boolean              @default(true)
+  inviteToken         String?              @unique
+  inviteTokenExpiry   DateTime?
+  AssociationMembers  AssociationMember[]
+}
+
+model AssociationMember {
+  id            String      @id @default(cuid())
+  userId        String
+  associationId String
+  role          UserRole    @default(manager)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  User          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, associationId])
+  @@index([userId], map: "AssociationMember_userId_fkey")
+  @@index([associationId], map: "AssociationMember_associationId_fkey")
+}
+
+// Manter Owner para compatibilidade (será migrado gradualmente)
 model Owner {
   id            String      @id
   email         String      @unique
@@ -112,16 +157,22 @@ model Owner {
 }
 
 model Patient {
-  id            String         @id
-  name          String
-  whatsapp      String         @unique
-  email         String?
-  isActive      Boolean        @default(true)
-  associationId String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime
-  Conversation  Conversation[]
-  Association   Association    @relation(fields: [associationId], references: [id])
+  id               String         @id
+  name             String
+  whatsapp         String         @unique
+  email            String?
+  cpf              String?
+  tipo_associacao  String?
+  nome_responsavel String?
+  cpf_responsavel  String?
+  status           PatientStatus  @default(LEAD)
+  wordpress_id     String?
+  isActive         Boolean        @default(true)
+  associationId    String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime
+  Conversation     Conversation[]
+  Association      Association    @relation(fields: [associationId], references: [id])
 
   @@index([associationId], map: "Patient_associationId_fkey")
 }
@@ -182,4 +233,14 @@ enum Order_status {
   Pronto_para_Entrega
   Finalizado
   Cancelado
+}
+
+enum UserRole {
+  super_admin
+  manager
+}
+
+enum PatientStatus {
+  LEAD
+  MEMBRO
 }

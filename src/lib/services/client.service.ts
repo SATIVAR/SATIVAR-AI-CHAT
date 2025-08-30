@@ -90,20 +90,20 @@ export const getClients = unstable_cache(
     async ({ searchQuery = '', page = 1, limit = 10, associationId }: { searchQuery?: string; page?: number; limit?: number; associationId?: string; }) => {
         const targetAssociationId = associationId || DEFAULT_ASSOCIATION_ID;
         
+        // Query patients table instead of clients for synchronized data
         const whereClause = {
-            isActive: true,
             associationId: targetAssociationId,
             ...(searchQuery ? {
                 OR: [
                     { name: { contains: searchQuery, mode: 'insensitive' } },
-                    { phone: { contains: searchQuery } }
+                    { whatsapp: { contains: searchQuery } }
                 ]
             } : {})
         };
 
-        const totalClients = await prisma.client.count({ where: whereClause });
+        const totalPatients = await prisma.patient.count({ where: whereClause });
         
-        const clients = await prisma.client.findMany({
+        const patients = await prisma.patient.findMany({
             where: whereClause,
             orderBy: {
                 name: 'asc'
@@ -112,12 +112,30 @@ export const getClients = unstable_cache(
             take: limit,
         });
         
+        // Convert patients to client format for compatibility
+        const clients = patients.map(patient => {
+            const createdAt = patient.createdAt instanceof Date ? patient.createdAt : new Date(patient.createdAt);
+            const updatedAt = patient.updatedAt instanceof Date ? patient.updatedAt : new Date(patient.updatedAt);
+            
+            return {
+                id: patient.id,
+                name: patient.name,
+                phone: patient.whatsapp, // Map whatsapp to phone for compatibility
+                email: patient.email,
+                associationId: patient.associationId,
+                isActive: true, // Patients are always active in this context
+                createdAt: createdAt,
+                lastOrderAt: updatedAt || createdAt,
+                address: null, // Address not stored in patient table yet
+            };
+        });
+        
         return {
             clients,
-            total: totalClients,
+            total: totalPatients,
             page,
             limit,
-            totalPages: Math.ceil(totalClients / limit),
+            totalPages: Math.ceil(totalPatients / limit),
         };
     },
     ['clients-list'],

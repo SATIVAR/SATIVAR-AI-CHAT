@@ -89,7 +89,7 @@ export async function getOrders(): Promise<Order[]> {
 }
 
 
-export async function updateOrderStatus(id: string, status: OrderStatus): Promise<{ success: boolean; error?: string }> {
+export async function updateOrderStatus(id: string, status: Order_status): Promise<{ success: boolean; error?: string }> {
     try {
         await prisma.order.update({
             where: { id },

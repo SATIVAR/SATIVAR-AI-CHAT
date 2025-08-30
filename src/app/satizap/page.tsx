@@ -7,25 +7,7 @@ import { PatientFormData } from '@/lib/types';
 
 export default function SatizapPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [associationName, setAssociationName] = useState<string>();
   const router = useRouter();
-
-  // Get association name from headers if available
-  useEffect(() => {
-    const getAssociationInfo = async () => {
-      try {
-        const response = await fetch('/api/tenant-info');
-        if (response.ok) {
-          const data = await response.json();
-          setAssociationName(data.association?.name);
-        }
-      } catch (error) {
-        console.error('Error fetching tenant info:', error);
-      }
-    };
-
-    getAssociationInfo();
-  }, []);
 
   const handlePatientSubmit = async (data: PatientFormData & { cpf?: string }, isReturning = false) => {
     setIsLoading(true);
@@ -65,7 +47,6 @@ export default function SatizapPage() {
       <PatientOnboarding 
         onSubmit={handlePatientSubmit} 
         isLoading={isLoading}
-        associationName={associationName}
       />
     </div>
   );

@@ -13,6 +13,7 @@ import { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { saveClientAction } from '@/app/admin/clients/actions';
 
 const formSchema = z.object({
     id: z.string().optional(),
@@ -35,10 +36,9 @@ interface ClientFormProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     client?: Client | null;
-    onSave: (client: Partial<Client>) => Promise<{ success: boolean, error?: string }>;
 }
 
-export default function ClientForm({ isOpen, setIsOpen, client, onSave }: ClientFormProps) {
+export default function ClientForm({ isOpen, setIsOpen, client }: ClientFormProps) {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     
@@ -56,29 +56,17 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
     }, [client, form]);
 
     const handleSubmit = async (values: ClientFormValues) => {
-        setIsLoading(true);
-        const result = await onSave(values);
-        setIsLoading(false);
-
-        if (result.success) {
-            toast({ title: 'Sucesso!', description: 'Cliente salvo com sucesso.' });
-            setIsOpen(false);
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Erro ao Salvar',
-                description: result.error || 'Ocorreu um erro desconhecido.',
-            });
-        }
+        // Form is now read-only, no submission needed
+        setIsOpen(false);
     };
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetContent className="sm:max-w-lg overflow-y-auto">
                 <SheetHeader>
-                    <SheetTitle>{client ? 'Editar Cliente' : 'Adicionar Novo Cliente'}</SheetTitle>
+                    <SheetTitle>Visualizar Cliente</SheetTitle>
                     <SheetDescription>
-                        Preencha os detalhes do cliente. Campos com * são obrigatórios.
+                        Dados do cliente sincronizados do sistema WordPress.
                     </SheetDescription>
                 </SheetHeader>
                 <Form {...form}>
@@ -88,8 +76,8 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Nome Completo *</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormLabel>Nome Completo</FormLabel>
+                                    <FormControl><Input {...field} readOnly className="bg-muted" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -99,8 +87,8 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             name="phone"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Telefone *</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormLabel>Telefone</FormLabel>
+                                    <FormControl><Input {...field} readOnly className="bg-muted" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -111,7 +99,7 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Rua / Logradouro</FormLabel>
-                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Input {...field} value={field.value ?? ''} readOnly className="bg-muted" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -122,7 +110,7 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Número</FormLabel>
-                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Input {...field} value={field.value ?? ''} readOnly className="bg-muted" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -133,7 +121,7 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Bairro</FormLabel>
-                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Input {...field} value={field.value ?? ''} readOnly className="bg-muted" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -144,7 +132,7 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Cidade</FormLabel>
-                                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Input {...field} value={field.value ?? ''} readOnly className="bg-muted" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -155,19 +143,15 @@ export default function ClientForm({ isOpen, setIsOpen, client, onSave }: Client
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Ponto de Referência</FormLabel>
-                                    <FormControl><Textarea placeholder="Ex: Próximo à padaria, casa com muro azul..." {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Textarea placeholder="Ex: Próximo à padaria, casa com muro azul..." {...field} value={field.value ?? ''} readOnly className="bg-muted" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <SheetFooter className="pt-6">
                             <SheetClose asChild>
-                                <Button type="button" variant="secondary">Cancelar</Button>
+                                <Button type="button" variant="secondary">Fechar</Button>
                             </SheetClose>
-                            <Button type="submit" disabled={isLoading}>
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Salvar
-                            </Button>
                         </SheetFooter>
                     </form>
                 </Form>

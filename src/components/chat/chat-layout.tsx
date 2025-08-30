@@ -57,7 +57,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
         <div className="z-10 flex h-full w-full max-w-2xl flex-col rounded-none border-0 bg-transparent shadow-2xl md:h-[95vh] md:rounded-2xl md:border md:bg-card/80 md:backdrop-blur-sm">
             <header className="relative flex items-center gap-4 border-b bg-secondary/50 p-4 dark:bg-card">
                 <div className="relative flex-shrink-0">
-                    <Logo className="h-12 w-12 text-primary" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                        <Logo className="h-6 w-6 text-white" />
+                    </div>
                     <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-card bg-green-500" />
                 </div>
                 <div className="flex-grow">

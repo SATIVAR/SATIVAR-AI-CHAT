@@ -15,14 +15,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isPublicPage = pathname === '/admin';
 
   useEffect(() => {
-    const session = localStorage.getItem('utopizap-admin-session');
+    // Verificar cookie de sessão
+    const checkAuth = () => {
+      try {
+        const authCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('auth-session='));
+        
+        if (!authCookie && !isPublicPage) {
+          // Só redirecionar se não estiver já na página de login
+          if (pathname !== '/login') {
+            router.replace('/login');
+          }
+          return;
+        }
+        
+        setIsVerified(true);
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        if (!isPublicPage && pathname !== '/login') {
+          router.replace('/login');
+        }
+      }
+    };
+
+    // Usar setTimeout para evitar problemas de hidratação
+    const timeoutId = setTimeout(checkAuth, 100);
     
-    if (!session && !isPublicPage) {
-      router.push('/admin');
-    } else {
-      setIsVerified(true);
-    }
-  }, [pathname, router, isPublicPage]);
+    return () => clearTimeout(timeoutId);
+  }, [pathname, isPublicPage]); // Remover router da dependência
 
   // Se a página não for pública e a verificação não estiver concluída, mostre um loader/tela em branco.
   if (!isPublicPage && !isVerified) {

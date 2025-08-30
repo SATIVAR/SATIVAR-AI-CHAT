@@ -1,7 +1,8 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, MessageSquare, Activity, Calendar, TrendingUp, BarChart3, Brain, Zap } from 'lucide-react';
@@ -25,7 +26,39 @@ const mockRecentActivity = [
 ];
 
 export default function DashboardPage() {
+    const router = useRouter();
 
+    useEffect(() => {
+        // Verificar se o usuário é um gerente e redirecioná-lo para sua associação
+        const checkUserRole = () => {
+            try {
+                const authCookie = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('auth-session='));
+                
+                if (authCookie) {
+                    const sessionData = JSON.parse(decodeURIComponent(authCookie.split('=')[1]));
+                    
+                    // Se for gerente, redirecionar para sua associação específica
+                    if (sessionData.role === 'manager' && sessionData.associationId) {
+                        const targetUrl = `/admin/associations/${sessionData.associationId}/edit`;
+                        // Só redirecionar se não estiver já na página correta
+                        if (window.location.pathname !== targetUrl) {
+                            router.replace(targetUrl);
+                        }
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar sessão:', error);
+            }
+        };
+
+        // Usar setTimeout para evitar problemas de hidratação
+        const timeoutId = setTimeout(checkUserRole, 100);
+        
+        return () => clearTimeout(timeoutId);
+    }, []); // Remover router da dependência para evitar loops
 
     return (
         <div className="space-y-6">

@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'teste.sativar.com.br',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

@@ -9,12 +9,51 @@ interface PatientRegistrationRequest {
   whatsapp: string;
   email?: string;
   cpf?: string;
+  tipo_associacao?: string;
+  nome_responsavel?: string;
+  cpf_responsavel?: string;
+  status?: 'LEAD' | 'MEMBRO';
+  wordpress_id?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Get tenant context from subdomain
-    const tenantContext = await getTenantContext(request);
+    // Get tenant context from middleware headers or fallback to direct lookup
+    let tenantContext = null;
+    
+    const tenantId = request.headers.get('X-Tenant-ID');
+    const tenantSubdomain = request.headers.get('X-Tenant-Subdomain');
+    
+    // Also check for slug in query parameters
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get('slug');
+    
+    if (tenantId && tenantSubdomain) {
+      // Use headers from middleware
+      const { getAssociationById } = await import('@/lib/services/association.service');
+      const association = await getAssociationById(tenantId);
+      
+      if (association && association.isActive) {
+        tenantContext = {
+          association,
+          subdomain: tenantSubdomain
+        };
+      }
+    } else if (slug) {
+      // Use slug to get association directly
+      const { getAssociationBySubdomain } = await import('@/lib/services/association.service');
+      const association = await getAssociationBySubdomain(slug);
+      
+      if (association && association.isActive) {
+        tenantContext = {
+          association,
+          subdomain: slug
+        };
+      }
+    } else {
+      // Fallback: try to get tenant context directly
+      tenantContext = await getTenantContext(request);
+    }
     
     if (!tenantContext) {
       return NextResponse.json(
@@ -24,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: PatientRegistrationRequest = await request.json();
-    const { name, whatsapp, email, cpf } = body;
+    const { name, whatsapp, email, cpf, tipo_associacao, nome_responsavel, cpf_responsavel, status, wordpress_id } = body;
 
     // Validate required fields
     if (!name || !whatsapp) {
@@ -48,10 +87,13 @@ export async function POST(request: NextRequest) {
       name: name.trim(),
       whatsapp: cleanWhatsapp,
       email: email?.trim() || undefined,
+      cpf: cpf?.replace(/\D/g, '') || undefined,
+      tipo_associacao: tipo_associacao?.trim() || undefined,
+      nome_responsavel: nome_responsavel?.trim() || undefined,
+      cpf_responsavel: cpf_responsavel?.replace(/\D/g, '') || undefined,
+      status: status || 'LEAD',
+      wordpress_id: wordpress_id?.toString() || undefined,
     };
-
-    // Add CPF to metadata if provided
-    const patientMetadata = cpf ? { cpf: cpf.replace(/\D/g, '') } : undefined;
 
     // Find or create patient within the association
     const patientResult = await findOrCreatePatient(patientData, tenantContext.association.id);
@@ -79,7 +121,7 @@ export async function POST(request: NextRequest) {
     const conversation = conversationResult.data;
 
     // If this is a new conversation, add welcome message customized for the association
-    if (conversation.messages.length === 0) {
+    if (conversation.Message.length === 0) {
       const welcomeMessage = isNewPatient
         ? `Olá ${patient.name}! 👋 Bem-vindo(a) ao SATIZAP da ${tenantContext.association.name}! 
 

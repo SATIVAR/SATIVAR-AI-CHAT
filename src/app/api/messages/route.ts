@@ -26,19 +26,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get tenant context from middleware headers or extract from request
+    // Get tenant context from middleware headers or fallback to direct lookup
     let tenantContext = null;
+    
     const tenantId = request.headers.get('X-Tenant-ID');
     const tenantSubdomain = request.headers.get('X-Tenant-Subdomain');
     
+    // Also check for slug in query parameters
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get('slug');
+    
     if (tenantId && tenantSubdomain) {
-      // Use tenant context from middleware headers
-      const association = await getAssociationBySubdomain(tenantSubdomain);
-      if (association) {
-        tenantContext = { association, subdomain: tenantSubdomain };
+      // Use headers from middleware
+      const { getAssociationById } = await import('@/lib/services/association.service');
+      const association = await getAssociationById(tenantId);
+      
+      if (association && association.isActive) {
+        tenantContext = {
+          association,
+          subdomain: tenantSubdomain
+        };
+      }
+    } else if (slug) {
+      // Use slug to get association directly
+      const association = await getAssociationBySubdomain(slug);
+      
+      if (association && association.isActive) {
+        tenantContext = {
+          association,
+          subdomain: slug
+        };
       }
     } else {
-      // Fallback: extract tenant context directly from request
+      // Fallback: try to get tenant context directly
       tenantContext = await getTenantContext(request);
     }
 
@@ -78,15 +98,27 @@ export async function POST(request: NextRequest) {
         }
 
         // Use tenant association or fallback to patient's association
-        const associationToUse = tenantContext?.association || (updatedConversation.patient as any).Association;
+        const associationToUse = tenantContext?.association || (updatedConversation.Patient as any).Association;
+        
+        // Ensure we have the full association data including apiConfig
+        let fullAssociation = associationToUse;
+        if (fullAssociation && !fullAssociation.apiConfig && tenantContext?.association?.apiConfig) {
+          fullAssociation = tenantContext.association;
+        }
 
         // Generate AI response with tenant-specific context
+        // Phase 3: Enable hybrid mode for cost optimization
+        const useHybridMode = process.env.ENABLE_HYBRID_AI === 'true' || false;
+        const tenantId = tenantContext?.subdomain || fullAssociation?.subdomain || 'default';
+        
         const aiResponseData = await guideSatizapConversation({
           conversationId,
           patientMessage: content,
-          conversationHistory: updatedConversation.messages,
-          patient: updatedConversation.patient,
-          association: associationToUse,
+          conversationHistory: updatedConversation.Message,
+          patient: updatedConversation.Patient,
+          association: fullAssociation,
+          tenantId,
+          useHybridMode
         });
 
         // Check if AI is requesting handoff

@@ -1,10 +1,10 @@
-import { AssociationForm } from '@/components/admin/associations/association-form';
+import { EditAssociationClient } from '@/components/admin/associations/edit-association-client';
 import { notFound } from 'next/navigation';
 
 interface EditAssociationPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 async function getAssociation(id: string) {
@@ -26,22 +26,16 @@ async function getAssociation(id: string) {
 }
 
 export default async function EditAssociationPage({ params }: EditAssociationPageProps) {
-  const association = await getAssociation(params.id);
+  const { id } = await params;
+  const association = await getAssociation(id);
 
   if (!association) {
     notFound();
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Editar Associação</h1>
-        <p className="text-muted-foreground">
-          Edite as informações e configurações da associação.
-        </p>
-      </div>
-      
-      <AssociationForm initialData={association} />
+    <div className="h-full">
+      <EditAssociationClient association={association} />
     </div>
   );
 }

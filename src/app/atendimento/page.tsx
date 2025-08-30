@@ -150,12 +150,12 @@ export default function AtendimentoPage() {
                             <div className="flex items-start space-x-3">
                               <Avatar>
                                 <AvatarFallback>
-                                  {getPatientInitials(conversation.patient.name)}
+                                  {getPatientInitials(conversation.Patient.name)}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2">
-                                  <h3 className="font-medium">{conversation.patient.name}</h3>
+                                  <h3 className="font-medium">{conversation.Patient.name}</h3>
                                   <Badge variant="secondary">
                                     {conversation.status === 'fila_humano' ? 'Na Fila' : conversation.status}
                                   </Badge>
@@ -163,7 +163,7 @@ export default function AtendimentoPage() {
                                 <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
                                   <div className="flex items-center">
                                     <Phone className="h-3 w-3 mr-1" />
-                                    {conversation.patient.whatsapp}
+                                    {conversation.Patient.whatsapp}
                                   </div>
                                   <div className="flex items-center">
                                     <Clock className="h-3 w-3 mr-1" />
@@ -171,12 +171,12 @@ export default function AtendimentoPage() {
                                   </div>
                                   <div className="flex items-center">
                                     <MessageCircle className="h-3 w-3 mr-1" />
-                                    {conversation.messages.length} mensagens
+                                    {conversation.Message.length} mensagens
                                   </div>
                                 </div>
-                                {conversation.messages.length > 0 && (
+                                {conversation.Message.length > 0 && (
                                   <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                                    {conversation.messages[conversation.messages.length - 1]?.content}
+                                    {conversation.Message[conversation.Message.length - 1]?.content}
                                   </p>
                                 )}
                               </div>
@@ -212,12 +212,12 @@ export default function AtendimentoPage() {
                     <div className="flex items-center space-x-3">
                       <Avatar>
                         <AvatarFallback>
-                          {getPatientInitials(selectedConversation.patient.name)}
+                          {getPatientInitials(selectedConversation.Patient.name)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <h3 className="font-medium">{selectedConversation.patient.name}</h3>
-                        <p className="text-sm text-gray-500">{selectedConversation.patient.whatsapp}</p>
+                        <h3 className="font-medium">{selectedConversation.Patient.name}</h3>
+                        <p className="text-sm text-gray-500">{selectedConversation.Patient.whatsapp}</p>
                       </div>
                     </div>
 
@@ -234,7 +234,7 @@ export default function AtendimentoPage() {
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">Mensagens:</span>
-                        <span>{selectedConversation.messages.length}</span>
+                        <span>{selectedConversation.Message.length}</span>
                       </div>
                     </div>
 
@@ -244,7 +244,7 @@ export default function AtendimentoPage() {
                       <h4 className="font-medium text-sm mb-2">Histórico Recente:</h4>
                       <ScrollArea className="h-40">
                         <div className="space-y-2">
-                          {selectedConversation.messages.slice(-5).map((message, index) => (
+                          {selectedConversation.Message.slice(-5).map((message, index) => (
                             <div key={index} className="text-xs">
                               <div className="flex items-center space-x-1">
                                 <span className="font-medium">

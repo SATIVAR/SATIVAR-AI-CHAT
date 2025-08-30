@@ -99,7 +99,7 @@ export default function SatizapChatPage() {
       const result = await response.json();
 
       if (response.ok && result.conversation) {
-        setMessages(result.conversation.messages || []);
+        setMessages(result.conversation.Message || []);
         setConversationStatus(result.conversation.status);
         
         // Connect to Socket.IO and join conversation room after loading messages

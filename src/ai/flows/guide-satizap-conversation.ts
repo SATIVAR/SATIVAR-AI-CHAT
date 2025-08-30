@@ -1,15 +1,94 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { Patient, ConversationMessage, DynamicComponentData } from '@/lib/types';
+import { Patient, ConversationMessage, DynamicComponentData, ApiConfig, Association } from '@/lib/types';
 import { buscarProdutosTool } from '@/ai/tools/buscar-produtos';
 import { criarPedidoTool } from '@/ai/tools/criar-pedido';
+import { findOrCreatePatientTool } from '@/ai/tools/find-or-create-patient';
+import { getContext } from '@/lib/services/context-loader.service';
+import { hybridAIOrchestrator, HybridAIInput } from './hybrid-ai-orchestrator';
+import { getConversationState, initializeConversationState } from '@/lib/services/conversation-state.service';
+
+/**
+ * FASE 3: Função para construir contexto do perfil completo do paciente
+ * Injeta dados contextuais detalhados para personalizar a conversa
+ */
+function buildPatientProfileContext(patient: Patient): string {
+  let context = `\n\n=== PERFIL COMPLETO DO PACIENTE ===\n`;
+  
+  // Dados básicos
+  context += `Nome: ${patient.name}\n`;
+  context += `WhatsApp: ${patient.whatsapp}\n`;
+  context += `Status: ${patient.status}\n`;
+  
+  if (patient.email) {
+    context += `Email: ${patient.email}\n`;
+  }
+  
+  // Dados ACF (Advanced Custom Fields) sincronizados do WordPress
+  if (patient.cpf) {
+    context += `CPF: ${patient.cpf}\n`;
+  }
+  
+  if (patient.tipo_associacao) {
+    context += `Tipo de Associação: ${patient.tipo_associacao}\n`;
+  }
+  
+  if (patient.nome_responsavel) {
+    context += `Nome do Responsável: ${patient.nome_responsavel}\n`;
+  }
+  
+  if (patient.cpf_responsavel) {
+    context += `CPF do Responsável: ${patient.cpf_responsavel}\n`;
+  }
+  
+  if (patient.wordpress_id) {
+    context += `ID no WordPress: ${patient.wordpress_id}\n`;
+  }
+  
+  context += `\n=== INSTRUÇÕES PARA USO DO PERFIL ===\n`;
+  
+  if (patient.status === 'MEMBRO') {
+    context += `• Este é um MEMBRO ativo da associação\n`;
+    context += `• Use os dados detalhados para personalizar a conversa\n`;
+    
+    if (patient.tipo_associacao === 'responsavel' && patient.nome_responsavel) {
+      context += `• Pode se referir ao responsável "${patient.nome_responsavel}" para confirmar informações\n`;
+    }
+    
+    if (patient.cpf || patient.cpf_responsavel) {
+      context += `• Pode usar o CPF como fator secundário de verificação de identidade se necessário\n`;
+    }
+    
+    context += `• Forneça atendimento completo e personalizado\n`;
+  } else if (patient.status === 'LEAD') {
+    context += `• Este é um LEAD (perfil incompleto)\n`;
+    context += `• Primeira tarefa: explicar o processo de associação\n`;
+    context += `• Objetivo: coletar informações necessárias para converter em MEMBRO\n`;
+    context += `• Campos a coletar: tipo de associação, dados do responsável (se aplicável)\n`;
+    context += `• Mantenha o foco na conversão do lead\n`;
+  }
+  
+  context += `\n`;
+  
+  return context;
+}
 
 const guideSatizapConversationInputSchema = z.object({
   conversationId: z.string(),
   patientMessage: z.string(),
   conversationHistory: z.array(z.any()),
-  patient: z.any(),
+  patient: z.any().optional(), // Make optional for new patients
   association: z.any().optional(),
+  // Phase 2: Dynamic tenant context
+  tenantId: z.string().describe('Association subdomain or ID for dynamic context loading'),
+  // Phase 2: Patient form data (for new patients)
+  patientFormData: z.object({
+    fullName: z.string(),
+    whatsapp: z.string(),
+    email: z.string().optional(),
+  }).optional().describe('New patient form data when no existing patient'),
+  // Phase 3: Hybrid mode flag
+  useHybridMode: z.boolean().default(false).describe('Whether to use the hybrid AI orchestrator'),
 });
 
 const guideSatizapConversationOutputSchema = z.object({
@@ -31,7 +110,124 @@ export const guideSatizapConversation = ai.defineFlow(
     outputSchema: guideSatizapConversationOutputSchema,
   },
   async (input) => {
-    const { conversationId, patientMessage, conversationHistory, patient, association } = input;
+    const { conversationId, patientMessage, conversationHistory, patient, association, tenantId, patientFormData, useHybridMode } = input;
+    
+    console.log(`[guideSatizapConversation] Starting for tenant: ${tenantId} ${useHybridMode ? '(HYBRID MODE)' : '(LEGACY MODE)'}`);
+    
+    // Phase 3: Check if we should use hybrid orchestrator
+    if (useHybridMode && patient) {
+      console.log(`[guideSatizapConversation] Using hybrid AI orchestrator`);
+      
+      try {
+        // Initialize conversation state if needed
+        await initializeConversationState(conversationId);
+        
+        // Prepare input for hybrid orchestrator
+        const hybridInput: HybridAIInput = {
+          conversationId,
+          patientMessage,
+          conversationHistory: conversationHistory.map((msg: any) => ({
+            role: msg.senderType === 'paciente' ? 'paciente' as const : 
+                 msg.senderType === 'ia' ? 'ia' as const :
+                 msg.role === 'user' ? 'paciente' as const :
+                 msg.role === 'ai' ? 'ia' as const : 'ia' as const,
+            content: msg.content,
+            timestamp: msg.timestamp || new Date().toISOString()
+          })),
+          currentOrder: [], // Would need to be passed from conversation context
+          patient: {
+            id: patient.id,
+            name: patient.name,
+            whatsapp: patient.whatsapp,
+            email: patient.email
+          },
+          association: association as Association
+        };
+        
+        // Use hybrid orchestrator
+        const hybridResult = await hybridAIOrchestrator(hybridInput);
+        
+        // Convert hybrid result to expected output format
+        return {
+          text: hybridResult.text as string,
+          components: hybridResult.components || [],
+          confidence: 0.9, // High confidence for hybrid responses
+          requestHandoff: false,
+          handoffReason: '',
+          detectedIntent: 'hybrid_response',
+          suggestedProducts: []
+        };
+        
+      } catch (error) {
+        console.error(`[guideSatizapConversation] Hybrid orchestrator error:`, error);
+        // Fall through to legacy mode on error
+      }
+    }
+    
+    console.log(`[guideSatizapConversation] Starting for tenant: ${tenantId}`);
+    
+    // Phase 2: Load dynamic context
+    let dynamicContext = null;
+    try {
+      dynamicContext = await getContext(tenantId);
+      if (dynamicContext) {
+        console.log(`[guideSatizapConversation] Loaded dynamic context for: ${dynamicContext.associationName}`);
+      }
+    } catch (error) {
+      console.error(`[guideSatizapConversation] Failed to load dynamic context:`, error);
+    }
+    
+    // Use dynamic context if available, otherwise fallback to static association
+    const effectiveAssociation = dynamicContext ? {
+      id: dynamicContext.associationId,
+      name: dynamicContext.associationName,
+      wordpressUrl: dynamicContext.wordpressUrl,
+      wordpressAuth: dynamicContext.wordpressAuth,
+      apiConfig: dynamicContext.apiConfig,
+      promptContext: dynamicContext.promptContext,
+      aiDirectives: dynamicContext.aiDirectives,
+      aiRestrictions: dynamicContext.aiRestrictions,
+    } : association;
+    
+    // Phase 2: Handle new patient onboarding with findOrCreatePatient tool
+    if (!patient && patientFormData) {
+      console.log(`[guideSatizapConversation] New patient detected, using findOrCreatePatient tool`);
+      
+      // This is a new patient - use the findOrCreatePatient tool
+      try {
+        const findPatientResponse = await ai.generate({
+          model: 'googleai/gemini-1.5-flash',
+          prompt: `Um novo paciente preencheu o formulário inicial com os dados: Nome: ${patientFormData.fullName}, WhatsApp: ${patientFormData.whatsapp}${patientFormData.email ? `, Email: ${patientFormData.email}` : ''}. Use a ferramenta findOrCreatePatient para verificar se o paciente já existe no sistema ou criar um novo registro.`,
+          tools: [findOrCreatePatientTool],
+        });
+        
+        // The tool call response will contain the patient status and next steps
+        console.log(`[guideSatizapConversation] findOrCreatePatient completed`);
+        
+        // Return the tool's response directly for new patient onboarding
+        return {
+          text: findPatientResponse.text || 'Processando seu cadastro...',
+          components: [],
+          confidence: 1.0,
+          requestHandoff: false,
+          handoffReason: '',
+          detectedIntent: 'patient_onboarding',
+          suggestedProducts: [],
+        };
+        
+      } catch (error) {
+        console.error(`[guideSatizapConversation] Error in patient onboarding:`, error);
+        return {
+          text: 'Ocorreu um erro ao processar seu cadastro. Tente novamente ou entre em contato com o suporte.',
+          components: [],
+          confidence: 0.0,
+          requestHandoff: true,
+          handoffReason: 'Erro no processo de cadastro',
+          detectedIntent: 'error',
+          suggestedProducts: [],
+        };
+      }
+    }
     
     // Build conversation context
     const historyText = conversationHistory
@@ -39,28 +235,70 @@ export const guideSatizapConversation = ai.defineFlow(
       .join('\n');
 
     // Build association-specific context with dynamic WordPress credentials
-    const associationName = association?.name || 'SATIZAP';
-    const associationContext = association?.promptContext 
-      ? `\n\nCONTEXTO ESPECÍFICO DA ASSOCIAÇÃO:\n${association.promptContext}\n` 
+    const associationName = effectiveAssociation?.name || 'SATIZAP';
+    const associationContext = effectiveAssociation?.promptContext 
+      ? `\n\nCONTEXTO ESPECÍFICO DA ASSOCIAÇÃO:\n${effectiveAssociation.promptContext}\n` 
       : '';
     
     // Build AI directives section
-    const aiDirectives = association?.aiDirectives 
-      ? `\n\nDIRETRIZES ESPECÍFICAS DE ATENDIMENTO:\nSiga estritamente as seguintes diretrizes em todas as suas interações:\n${association.aiDirectives}\n`
+    const aiDirectives = effectiveAssociation?.aiDirectives 
+      ? `\n\nDIRETRIZES ESPECÍFICAS DE ATENDIMENTO:\nSiga estritamente as seguintes diretrizes em todas as suas interações:\n${effectiveAssociation.aiDirectives}\n`
       : '';
     
     // Build AI restrictions section
-    const aiRestrictions = association?.aiRestrictions 
-      ? `\n\nRESTRIÇÕES OBRIGATÓRIAS:\nSob nenhuma circunstância você deve:\n${association.aiRestrictions}\n`
+    const aiRestrictions = effectiveAssociation?.aiRestrictions 
+      ? `\n\nRESTRIÇÕES OBRIGATÓRIAS:\nSob nenhuma circunstância você deve:\n${effectiveAssociation.aiRestrictions}\n`
       : '';
-    
-    // Prepare WordPress credentials for tools if available
-    const wordpressConfig = association?.wordpressUrl && association?.wordpressAuth ? {
-      wordpressUrl: association.wordpressUrl,
-      wordpressAuth: association.wordpressAuth
-    } : undefined;
 
-    const systemPrompt = `Você é SATIZAP, um assistente especializado em cannabis medicinal altamente qualificado e empático. Você trabalha para ${associationName}, uma associação de pacientes de cannabis medicinal.${associationContext}${aiDirectives}${aiRestrictions}
+    // FASE 3: Injeção do Perfil Completo do Paciente
+    // Carregar o registro completo do paciente com todos os novos campos ACF
+    let patientProfileContext = '';
+    if (patient) {
+      patientProfileContext = buildPatientProfileContext(patient);
+    }
+    
+    // Phase 2: Enhanced API configuration with dynamic context
+    const wordpressConfig = effectiveAssociation?.wordpressUrl && effectiveAssociation?.wordpressAuth ? {
+      wordpressUrl: effectiveAssociation.wordpressUrl,
+      wordpressAuth: effectiveAssociation.wordpressAuth
+    } : undefined;
+    
+    // Extract apiConfig for dynamic endpoint usage (Phase 2 enhancement)
+    const apiConfig: ApiConfig | undefined = effectiveAssociation?.apiConfig;
+    
+    // Build enhanced system prompt that includes API configuration status
+    const apiConfigStatus = apiConfig 
+      ? `\n- Configuração API dinâmica ativa: ${apiConfig.authMethod === 'applicationPassword' ? 'WordPress Application Password' : 'WooCommerce Consumer Key/Secret'}`
+      : '\n- Usando configuração padrão do sistema';
+      
+    const dynamicContextStatus = dynamicContext 
+      ? `\n- Contexto dinâmico carregado com sucesso para: ${dynamicContext.associationName}`
+      : '\n- Usando contexto estático';
+    const systemPrompt = `Você é SATIZAP, um assistente especializado em cannabis medicinal altamente qualificado e empático. Você trabalha para ${associationName}, uma associação de pacientes de cannabis medicinal.${associationContext}${aiDirectives}${aiRestrictions}${apiConfigStatus}${dynamicContextStatus}
+
+PERSONALIDADE E COMPORTAMENTO:
+- Seja empático, profissional e acolhedor
+- Use linguagem clara e acessível, evitando termos técnicos excessivos
+- Demonstre conhecimento especializado sem ser intimidador
+- Seja proativo em sugerir soluções
+- Mantenha um tom otimista e esperançoso
+
+SEU PAPEL:
+1. Ajudar pacientes a encontrar produtos de cannabis medicinal adequados
+2. Fornecer orientações sobre dosagem e uso
+3. Esclarecer dúvidas sobre efeitos e indicações
+4. Analisar prescrições médicas (quando enviadas por imagem)
+5. Guiar o processo de seleção e pedido de produtos
+
+FERRAMENTAS DISPONÍVEIS:
+- buscarProdutos: Use para encontrar produtos baseado em sintomas, categorias ou nomes específicos
+- criarPedido: Use para criar orçamentos quando o paciente decidir os produtos desejados
+${dynamicContext ? '- findOrCreatePatient: Para processar novos pacientes (já processado nesta conversa)' : ''}
+
+QUANDO USAR FERRAMENTAS:
+- Use buscarProdutos sempre que o paciente mencionar sintomas, condições médicas ou buscar produtos específicos
+- Use criarPedido quando o paciente confirmar quais produtos deseja e suas quantidades
+- Sempre passe o associationId ${effectiveAssociation?.id || 'DEFAULT'} e tenantId ${tenantId} para as ferramentas${wordpressConfig ? ` e as credenciais do WordPress quando disponíveis` : ''}${apiConfig ? ` e a configuração de API dinâmica` : ''}
 
 PERSONALIDADE E COMPORTAMENTO:
 - Seja empático, profissional e acolhedor
@@ -83,7 +321,7 @@ FERRAMENTAS DISPONÍVEIS:
 QUANDO USAR FERRAMENTAS:
 - Use buscarProdutos sempre que o paciente mencionar sintomas, condições médicas ou buscar produtos específicos
 - Use criarPedido quando o paciente confirmar quais produtos deseja e suas quantidades
-- Sempre passe o associationId ${association?.id || 'DEFAULT'} para as ferramentas${wordpressConfig ? ` e as credenciais do WordPress quando disponíveis` : ''}
+- Sempre passe o associationId ${association?.id || 'DEFAULT'} para as ferramentas${wordpressConfig ? ` e as credenciais do WordPress quando disponíveis` : ''}${apiConfig ? ` e a configuração de API dinâmica` : ''}
 
 GATILHOS PARA TRANSFERÊNCIA HUMANA (requestHandoff: true):
 - Paciente expressa frustração ou insatisfação extrema
@@ -105,7 +343,7 @@ CAPACIDADES ESPECIAIS:
 DADOS DO PACIENTE ATUAL:
 Nome: ${patient.name}
 WhatsApp: ${patient.whatsapp}
-${patient.email ? `Email: ${patient.email}` : ''}
+${patient.email ? `Email: ${patient.email}` : ''}${patientProfileContext}
 
 HISTÓRICO DA CONVERSA:
 ${historyText}
@@ -132,7 +370,7 @@ Responda sempre em português brasileiro.`;
       const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
         prompt: systemPrompt,
-        tools: [buscarProdutosTool, criarPedidoTool],
+        tools: [buscarProdutosTool, criarPedidoTool, findOrCreatePatientTool],
         config: {
           temperature: 0.7,
           maxOutputTokens: 1024,
