@@ -229,11 +229,14 @@ export class WordPressApiService {
     const url = `${this.baseUrl}/wp-json/wp/v2${endpoint}`;
     const config = await this.createRequestConfig(method, body);
     
+    console.log(`[WordPress Service] Making WP Core API request to: ${url}`);
+    
     try {
       const response = await fetch(url, config);
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.log(`[WordPress Service] WP Core API Error: ${response.status} - ${errorText}`);
         throw new Error(`WordPress Core API Error: ${response.status} - ${errorText}`);
       }
 
@@ -364,6 +367,7 @@ export class WordPressApiService {
     }
     
     const endpoint = `/users?${queryParams.toString()}`;
+    console.log(`[WordPress Service] Getting users from: ${this.baseUrl}/wp-json/wp/v2${endpoint}`);
     return this.makeWpRequest<WordPressUser[]>(endpoint);
   }
 
@@ -386,112 +390,100 @@ export class WordPressApiService {
   }
 
   /**
-   * Find user by phone number (WhatsApp) using ACF endpoint
-   * This method uses the specific ACF endpoint as described in Fase 2
-   * GET .../clientes?acf_filters[telefone]={whatsapp}
+   * Find user by phone number (WhatsApp) using custom endpoint
+   * CORREÇÃO FASE 1: Usar apenas o endpoint customizado correto
    */
   async findUserByPhone(whatsapp: string): Promise<WordPressUser & { acf?: any } | null> {
     try {
-      // Fase 2: Use the specific ACF endpoint for phone lookup
-      const acfEndpointUrl = `${this.baseUrl}/wp-json/wp/v2/clientes?acf_filters[telefone]=${whatsapp}`;
+      const { sanitizePhone } = await import('@/lib/utils/phone');
+      const cleanWhatsapp = sanitizePhone(whatsapp);
+      
+      console.log(`[FASE 1 - LOG 1] Searching for phone: ${whatsapp} (cleaned: ${cleanWhatsapp})`);
+      
+      // CORREÇÃO FASE 1: Usar APENAS o endpoint customizado correto
+      const customEndpointUrl = `${this.baseUrl}/wp-json/sativar/v1/clientes?acf_filters[telefone]=${cleanWhatsapp}`;
       const config = await this.createRequestConfig('GET');
       
-      try {
-        console.log(`[WordPress API] Trying ACF endpoint: ${acfEndpointUrl}`);
-        const response = await fetch(acfEndpointUrl, config);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`[WordPress API] ACF endpoint response:`, data);
-          
-          // If ACF endpoint returns user data with ACF fields
-          if (data && (Array.isArray(data) ? data.length > 0 : data.id)) {
-            const userData = Array.isArray(data) ? data[0] : data;
-            return {
-              id: userData.id || userData.ID,
-              username: userData.username || userData.user_login,
-              name: userData.name || userData.display_name || userData.acf?.nome_completo,
-              first_name: userData.first_name || userData.acf?.nome_completo?.split(' ')[0],
-              last_name: userData.last_name || userData.acf?.nome_completo?.split(' ').slice(1).join(' '),
-              email: userData.email || userData.user_email,
-              acf: userData.acf || {} // Include ACF data for Fase 2 synchronization
-            } as WordPressUser & { acf?: any };
-          }
-        } else {
-          console.log(`[WordPress API] ACF endpoint returned ${response.status}: ${response.statusText}`);
-        }
-      } catch (acfEndpointError) {
-        console.log('[WordPress API] ACF endpoint not available, trying fallback:', acfEndpointError);
+      console.log(`[FASE 1 - LOG 3] URL construída para WordPress: ${customEndpointUrl}`);
+      
+      const response = await fetch(customEndpointUrl, config);
+      
+      console.log(`[FASE 1 - LOG 4A] WordPress Response Status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log(`[FASE 1 - LOG 4A] WordPress Error Response:`, errorText);
+        return null;
       }
       
-      // Fallback 1: Try legacy custom endpoint
-      try {
-        const legacyEndpointUrl = `${this.baseUrl}/wp-json/sativar/v1/clientes?telefone=${whatsapp}`;
-        console.log(`[WordPress API] Trying legacy endpoint: ${legacyEndpointUrl}`);
-        
-        const response = await fetch(legacyEndpointUrl, config);
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`[WordPress API] Legacy endpoint response:`, data);
-          
-          if (data && (Array.isArray(data) ? data.length > 0 : data.id)) {
-            const userData = Array.isArray(data) ? data[0] : data;
-            return {
-              id: userData.id || userData.ID,
-              username: userData.username || userData.user_login,
-              name: userData.name || userData.display_name,
-              first_name: userData.first_name,
-              last_name: userData.last_name,
-              email: userData.email || userData.user_email,
-              acf: userData.acf || userData.meta_data || {}
-            } as WordPressUser & { acf?: any };
-          }
-        }
-      } catch (legacyEndpointError) {
-        console.log('[WordPress API] Legacy endpoint not available, trying standard search:', legacyEndpointError);
+      const clientsData = await response.json();
+      console.log(`[FASE 1 - LOG 4A] WordPress Response Body:`, clientsData);
+      
+      // O endpoint customizado retorna um objeto com dados ou array vazio
+      if (!clientsData || (Array.isArray(clientsData) && clientsData.length === 0)) {
+        console.log(`[FASE 1 - LOG 4D] No clients found in WordPress`);
+        return null;
       }
       
-      // Fallback 2: Standard WordPress user search
-      console.log(`[WordPress API] Trying standard user search for: ${whatsapp}`);
-      const users = await this.getUsers({ search: whatsapp, per_page: 10 });
-      
-      // Try to find user with matching phone in meta or description
-      const matchingUser = users.find(user => {
-        // Check user meta for whatsapp field
-        if (user.meta?.whatsapp === whatsapp) {
-          return true;
-        }
-        
-        // Check description for phone number
-        if (user.description?.includes(whatsapp)) {
-          return true;
-        }
-        
-        // Check if phone is in any meta field
-        if (user.meta) {
-          return Object.values(user.meta).some(value => 
-            typeof value === 'string' && value.includes(whatsapp)
-          );
-        }
-        
-        return false;
-      });
-      
-      if (matchingUser) {
-        console.log(`[WordPress API] Found user via standard search:`, matchingUser.id);
-        return {
-          ...matchingUser,
-          acf: matchingUser.meta || {}
-        } as WordPressUser & { acf?: any };
+      // Se encontrou dados, normalizar e retornar
+      let clientData;
+      if (Array.isArray(clientsData) && clientsData.length > 0) {
+        clientData = clientsData[0]; // Pegar o primeiro resultado
+      } else if (clientsData && typeof clientsData === 'object' && !Array.isArray(clientsData)) {
+        clientData = clientsData; // Dados diretos do cliente
+      } else {
+        console.log(`[FASE 1 - LOG 4D] Invalid response format from WordPress`);
+        return null;
       }
       
-      console.log(`[WordPress API] No user found for WhatsApp: ${whatsapp}`);
-      return null;
+      console.log(`[FASE 1 - LOG 4C] MATCH FOUND! Client ID: ${clientData.id}`);
+      
+      const normalizedUser = this.normalizeWordPressUser(clientData);
+      console.log(`[FASE 1 - LOG 4C] Returning user: ${normalizedUser.name}`);
+      
+      return normalizedUser;
       
     } catch (error) {
-      console.error('[WordPress API] Error finding user by phone:', error);
+      console.error('[FASE 1 - LOG 4D] Error in smart phone search:', error);
       return null;
     }
+  }
+  
+
+  
+  /**
+   * Normaliza dados do cliente WordPress para formato padrão
+   */
+  private normalizeWordPressUser(userData: any): WordPressUser & { acf?: any } {
+    // Extrair nome de múltiplas fontes possíveis
+    let name = userData.name || userData.display_name;
+    
+    if (!name && userData.acf) {
+      name = userData.acf.nome_completo || userData.acf.nome || userData.acf.name;
+    }
+    
+    if (!name && userData.title?.rendered) {
+      name = userData.title.rendered;
+    }
+    
+    // Se ainda não tem nome, usar ID como fallback
+    if (!name) {
+      name = `Cliente ${userData.id || userData.ID || 'Desconhecido'}`;
+    }
+    
+    const nameParts = name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    return {
+      id: userData.id || userData.ID,
+      username: userData.username || userData.user_login || `cliente_${userData.id}`,
+      name: name,
+      first_name: userData.first_name || firstName,
+      last_name: userData.last_name || lastName,
+      email: userData.email || userData.user_email || `cliente${userData.id}@temp.local`,
+      acf: userData.acf || {}
+    } as WordPressUser & { acf?: any };
   }
 
   async findOrCreatePatient(patientData: {

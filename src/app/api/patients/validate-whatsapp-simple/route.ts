@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizePhone, isValidPhone } from '@/lib/utils/phone';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[API] validate-whatsapp-simple called - Fase 2 Implementation');
+    console.log('[API] validate-whatsapp-simple called - Fase 2 & 3 Implementation');
     
     // Get slug from query parameters
     const { searchParams } = new URL(request.url);
@@ -31,22 +32,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'WhatsApp é obrigatório' }, { status: 400 });
     }
     
-    // Clean WhatsApp number
-    const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+    // Log 1 (Entrada): Registrar o número exatamente como recebido
+    console.log('[FASE 1 - LOG 1] WhatsApp recebido do formulário:', whatsapp);
     
-    if (cleanWhatsapp.length < 10) {
-      return NextResponse.json({ error: 'WhatsApp deve ter pelo menos 10 dígitos' }, { status: 400 });
+    // Fase 1: Sanitização no Backend - usar função utilitária
+    const cleanWhatsapp = sanitizePhone(whatsapp);
+    
+    // Log 2 (Normalização): Registrar após sanitização
+    console.log('[FASE 1 - LOG 2] WhatsApp após sanitização:', cleanWhatsapp);
+    
+    if (!isValidPhone(cleanWhatsapp)) {
+      return NextResponse.json({ error: 'WhatsApp deve ter entre 10 e 11 dígitos' }, { status: 400 });
     }
     
-    console.log('[API] Clean WhatsApp:', cleanWhatsapp);
-    
-    // Fase 2: Primeiro verificar no WordPress usando o endpoint ACF específico
+    // Fase 2: Verificar no WordPress e retornar dados estruturados
     try {
       console.log('[API] Fase 2: Checking WordPress ACF endpoint for patient');
       
       const { WordPressApiService } = await import('@/lib/services/wordpress-api.service');
       const wordpressService = new WordPressApiService(association);
+      
+      // Log 3 (Construção da Requisição): URL que será chamada
+      const baseUrl = association.wordpressUrl.replace(/\/$/, ''); // Remove trailing slash
+      const wordpressUrl = `${baseUrl}/wp-json/sativar/v1/clientes?acf_filters[telefone]=${cleanWhatsapp}`;
+      console.log('[FASE 1 - LOG 3] URL construída para WordPress:', wordpressUrl);
+      
+      // CORREÇÃO FASE 1: Garantir que apenas o endpoint correto seja usado
       const wordpressUser = await wordpressService.findUserByPhone(cleanWhatsapp);
+      
+      // Log 4 (Resposta Bruta): Status e dados da resposta do WordPress
+      console.log('[FASE 1 - LOG 4] Resposta do WordPress:', {
+        found: !!wordpressUser,
+        userData: wordpressUser ? {
+          id: wordpressUser.id,
+          name: wordpressUser.name,
+          hasAcf: !!wordpressUser.acf
+        } : null
+      });
       
       if (wordpressUser && wordpressUser.acf) {
         console.log('[API] Caminho A: Paciente encontrado no WordPress - Sincronização Completa');
@@ -64,13 +86,15 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({
             status: 'patient_found',
             syncType: 'wordpress_member',
-            patient: {
+            patientData: {
               id: syncResult.data.id,
               name: syncResult.data.name,
               whatsapp: cleanWhatsapp,
               status: syncResult.data.status,
               cpf: syncResult.data.cpf,
               tipo_associacao: syncResult.data.tipo_associacao,
+              nome_responsavel: syncResult.data.nome_responsavel,
+              cpf_responsavel: syncResult.data.cpf_responsavel,
               source: 'wordpress_acf_synced'
             },
             message: 'Paciente encontrado e sincronizado com dados completos do WordPress'
@@ -91,11 +115,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         status: 'patient_found',
         syncType: 'existing_satizap',
-        patient: {
+        patientData: {
           id: existingPatient.id,
           name: existingPatient.name,
           whatsapp: cleanWhatsapp,
           status: existingPatient.status,
+          cpf: existingPatient.cpf,
+          tipo_associacao: existingPatient.tipo_associacao,
+          nome_responsavel: existingPatient.nome_responsavel,
+          cpf_responsavel: existingPatient.cpf_responsavel,
           source: 'satizap'
         }
       });
@@ -107,7 +135,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       status: 'new_patient_step_2',
       syncType: 'lead_capture',
-      message: 'Paciente não encontrado no WordPress. Prosseguir para coleta de dados básicos (Nome e CPF).',
+      message: 'Paciente não encontrado. Prosseguir para coleta de dados básicos.',
       instructions: {
         nextStep: 'collect_basic_data',
         requiredFields: ['name', 'cpf'],
@@ -120,7 +148,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Erro interno do servidor',
-        details: error instanceof Error ? error.message : String(error)
+        details: error instanceof Error ? error.message : String(error),
+        status: 'error'
       },
       { status: 500 }
     );

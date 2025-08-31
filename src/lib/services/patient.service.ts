@@ -1,11 +1,15 @@
 import prisma from '@/lib/prisma';
 import { Patient, PatientFormData } from '@/lib/types';
+import { sanitizePhone } from '@/lib/utils/phone';
 
 export async function findPatientByWhatsapp(whatsapp: string, associationId: string): Promise<Patient | null> {
   try {
+    // Fase 1: Sanitizar o WhatsApp antes da busca
+    const cleanWhatsapp = sanitizePhone(whatsapp);
+    
     const patient = await prisma.patient.findFirst({
       where: { 
-        whatsapp,
+        whatsapp: cleanWhatsapp,
         associationId 
       },
     });
@@ -22,13 +26,17 @@ export async function createPatient(data: PatientFormData, associationId: string
       return Math.random().toString(36).substring(2) + Date.now().toString(36);
     };
 
+    // Fase 1: Sanitizar dados antes de salvar
+    const cleanWhatsapp = sanitizePhone(data.whatsapp);
+    const cleanCpf = data.cpf ? data.cpf.replace(/\D/g, '') : null;
+    
     const patient = await prisma.patient.create({
       data: {
         id: generateId(),
         name: data.name,
-        whatsapp: data.whatsapp,
+        whatsapp: cleanWhatsapp,
         email: data.email || null,
-        cpf: data.cpf || null,
+        cpf: cleanCpf,
         tipo_associacao: data.tipo_associacao || null,
         nome_responsavel: data.nome_responsavel || null,
         cpf_responsavel: data.cpf_responsavel || null,
@@ -53,20 +61,23 @@ export async function createPatient(data: PatientFormData, associationId: string
 
 export async function updatePatient(id: string, data: Partial<PatientFormData>): Promise<{ success: boolean; data?: Patient; error?: string }> {
   try {
+    // Fase 1: Sanitizar dados antes de atualizar
+    const updateData: any = {
+      ...(data.name && { name: data.name }),
+      ...(data.whatsapp && { whatsapp: sanitizePhone(data.whatsapp) }),
+      ...(data.email !== undefined && { email: data.email || null }),
+      ...(data.cpf !== undefined && { cpf: data.cpf ? data.cpf.replace(/\D/g, '') : null }),
+      ...(data.tipo_associacao !== undefined && { tipo_associacao: data.tipo_associacao || null }),
+      ...(data.nome_responsavel !== undefined && { nome_responsavel: data.nome_responsavel || null }),
+      ...(data.cpf_responsavel !== undefined && { cpf_responsavel: data.cpf_responsavel || null }),
+      ...(data.status && { status: data.status }),
+      ...(data.wordpress_id !== undefined && { wordpress_id: data.wordpress_id || null }),
+      updatedAt: new Date(),
+    };
+    
     const patient = await prisma.patient.update({
       where: { id },
-      data: {
-        ...(data.name && { name: data.name }),
-        ...(data.whatsapp && { whatsapp: data.whatsapp }),
-        ...(data.email !== undefined && { email: data.email || null }),
-        ...(data.cpf !== undefined && { cpf: data.cpf || null }),
-        ...(data.tipo_associacao !== undefined && { tipo_associacao: data.tipo_associacao || null }),
-        ...(data.nome_responsavel !== undefined && { nome_responsavel: data.nome_responsavel || null }),
-        ...(data.cpf_responsavel !== undefined && { cpf_responsavel: data.cpf_responsavel || null }),
-        ...(data.status && { status: data.status }),
-        ...(data.wordpress_id !== undefined && { wordpress_id: data.wordpress_id || null }),
-        updatedAt: new Date(),
-      },
+      data: updateData,
     });
 
     return { success: true, data: patient };
@@ -185,14 +196,15 @@ export async function syncPatientWithWordPressACF(
     
     // Fase 2: Analisar o objeto acf completo recebido
     // Preencher todas as colunas correspondentes na tabela Pacientes do SatiZap
+    // Fase 1: Garantir que os dados estão sanitizados
     const patientData: PatientFormData = {
       name: acfData.nome_completo || wordpressData.name || `${wordpressData.first_name || ''} ${wordpressData.last_name || ''}`.trim(),
-      whatsapp: whatsapp,
+      whatsapp: sanitizePhone(whatsapp),
       email: wordpressData.email || null,
-      cpf: acfData.cpf || null,
+      cpf: acfData.cpf ? acfData.cpf.replace(/\D/g, '') : null,
       tipo_associacao: acfData.tipo_associacao || null,
       nome_responsavel: acfData.nome_responsavel || null,
-      cpf_responsavel: acfData.cpf_responsavel || null,
+      cpf_responsavel: acfData.cpf_responsavel ? acfData.cpf_responsavel.replace(/\D/g, '') : null,
       status: 'MEMBRO', // Definir o status do paciente como 'MEMBRO' e salvar o wordpress_id
       wordpress_id: wordpressData.id?.toString() || null,
     };
@@ -206,7 +218,7 @@ export async function syncPatientWithWordPressACF(
     });
 
     // Procurar paciente existente no SatiZap
-    const existingPatient = await findPatientByWhatsapp(whatsapp, associationId);
+    const existingPatient = await findPatientByWhatsapp(sanitizePhone(whatsapp), associationId);
     
     if (existingPatient) {
       console.log('[Patient Service] Existing patient found, updating with WordPress ACF data');
@@ -247,10 +259,11 @@ export async function createPatientLead(
   associationId: string
 ): Promise<{ success: boolean; data?: Patient; error?: string }> {
   try {
+    // Fase 1: Sanitizar dados antes de criar o lead
     const leadData: PatientFormData = {
-      name: name,
-      whatsapp: whatsapp,
-      cpf: cpf,
+      name: name.trim(),
+      whatsapp: sanitizePhone(whatsapp),
+      cpf: cpf.replace(/\D/g, ''),
       status: 'LEAD', // Status LEAD para pacientes não encontrados no WordPress
       // Outros campos ACF ficam NULL para LEADs
     };

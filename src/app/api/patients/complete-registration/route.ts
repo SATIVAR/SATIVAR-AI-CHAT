@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantContext } from '@/lib/middleware/tenant';
 import { createPatientLead } from '@/lib/services/patient.service';
+import { sanitizePhone, isValidPhone } from '@/lib/utils/phone';
 
 export async function POST(request: NextRequest) {
   console.log('[API] complete-registration called - Fase 2 Implementation');
@@ -65,14 +66,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Clean inputs
-    const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+    // Fase 1: Sanitização no Backend - usar funções utilitárias
+    const cleanWhatsapp = sanitizePhone(whatsapp);
     const cleanCpf = cpf.replace(/\D/g, '');
     const cleanName = name.trim();
 
-    if (cleanWhatsapp.length < 10) {
+    console.log('[API] Sanitized data:', {
+      cleanWhatsapp,
+      cleanCpf: cleanCpf.length,
+      cleanName: cleanName.length
+    });
+
+    if (!isValidPhone(cleanWhatsapp)) {
       return NextResponse.json(
-        { error: 'WhatsApp deve ter pelo menos 10 dígitos' },
+        { error: 'WhatsApp deve ter entre 10 e 11 dígitos' },
         { status: 400 }
       );
     }

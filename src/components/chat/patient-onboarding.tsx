@@ -116,7 +116,7 @@ export function PatientOnboarding({ onSubmit, isLoading = false, associationData
           </CardHeader>
           
           <CardContent className="space-y-4 pt-2">
-            {/* 4. Formulário de WhatsApp */}
+            {/* 4. Formulário de WhatsApp com Confirmação */}
             <OnboardingForm 
               onSubmit={onSubmit}
               isLoading={isLoading}

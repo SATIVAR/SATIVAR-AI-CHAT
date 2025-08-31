@@ -7,22 +7,27 @@ import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { PatientFormData } from '@/lib/types';
+import { sanitizePhone, getPhoneForAPI } from '@/lib/utils/phone';
 import { Loader2, MessageCircle, ArrowLeft } from 'lucide-react';
+import { PatientConfirmation } from './patient-confirmation';
 
-// Schema for phone validation only
+// Schema for phone validation only - now validates the raw sanitized value
 const phoneOnlySchema = z.object({
   whatsapp: z.string()
     .min(10, 'WhatsApp deve ter pelo menos 10 dígitos')
+    .max(11, 'WhatsApp deve ter no máximo 11 dígitos')
     .regex(/^\d+$/, 'WhatsApp deve conter apenas números'),
 });
 
-// Schema for full patient data
+// Schema for full patient data - validates sanitized values
 const fullPatientSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   whatsapp: z.string()
     .min(10, 'WhatsApp deve ter pelo menos 10 dígitos')
+    .max(11, 'WhatsApp deve ter no máximo 11 dígitos')
     .regex(/^\d+$/, 'WhatsApp deve conter apenas números'),
   cpf: z.string()
     .min(11, 'CPF deve ter 11 dígitos')
@@ -35,11 +40,25 @@ interface OnboardingFormProps {
   isLoading?: boolean;
 }
 
-type FormStep = 'phone' | 'details';
+type FormStep = 'phone' | 'details' | 'confirmation';
+
+interface PatientData {
+  id: string;
+  name: string;
+  whatsapp: string;
+  status?: string;
+  cpf?: string;
+  tipo_associacao?: string;
+  nome_responsavel?: string;
+  cpf_responsavel?: string;
+  source?: string;
+}
 
 export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormProps) {
   const [step, setStep] = useState<FormStep>('phone');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rawPhoneValue, setRawPhoneValue] = useState('');
+  const [patientData, setPatientData] = useState<PatientData | null>(null);
 
   const phoneForm = useForm({
     resolver: zodResolver(phoneOnlySchema),
@@ -58,6 +77,9 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
   const handlePhoneSubmit = async (data: { whatsapp: string }) => {
     setIsSubmitting(true);
     try {
+      // Fase 1: Sanitização no Backend - usar sempre o valor sanitizado
+      const sanitizedPhone = getPhoneForAPI(rawPhoneValue || data.whatsapp);
+      
       // Get current path to determine tenant context
       const currentPath = window.location.pathname;
       const pathSegments = currentPath.split('/').filter(segment => segment.length > 0);
@@ -66,26 +88,24 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
       // Include slug in the API call if we're on a dynamic route (using simplified API for now)
       const apiUrl = slug && slug !== 'satizap' ? `/api/patients/validate-whatsapp-simple?slug=${slug}` : '/api/patients/validate-whatsapp-simple';
       
-      // Use new WordPress validation endpoint
+      // Use new WordPress validation endpoint with sanitized phone
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whatsapp: data.whatsapp }),
+        body: JSON.stringify({ whatsapp: sanitizedPhone }),
       });
 
       if (response.ok) {
         const result = await response.json();
         
         if (result.status === 'patient_found') {
-          // Existing patient - transition directly to chat
-          await onSubmit({ 
-            whatsapp: data.whatsapp, 
-            name: result.patient.name 
-          }, true); // isReturning = true
+          // Existing patient - show confirmation view
+          setPatientData(result.patientData);
+          setStep('confirmation');
           return;
         } else if (result.status === 'new_patient_step_2') {
           // New patient - proceed to details form
-          fullForm.setValue('whatsapp', data.whatsapp);
+          fullForm.setValue('whatsapp', sanitizedPhone);
           setStep('details');
           // Store preliminary patient ID for later completion
           sessionStorage.setItem('preliminary_patient_id', result.preliminaryPatientId || '');
@@ -95,13 +115,14 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
       
       // Fallback: if API call fails, proceed to details form
       console.error('Validation API failed, proceeding to details form');
-      fullForm.setValue('whatsapp', data.whatsapp);
+      fullForm.setValue('whatsapp', sanitizedPhone);
       setStep('details');
       
     } catch (error) {
       console.error('Error validating WhatsApp:', error);
       // On error, proceed to full form as fallback
-      fullForm.setValue('whatsapp', data.whatsapp);
+      const sanitizedPhone = getPhoneForAPI(rawPhoneValue || data.whatsapp);
+      fullForm.setValue('whatsapp', sanitizedPhone);
       setStep('details');
     } finally {
       setIsSubmitting(false);
@@ -111,6 +132,10 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
   const handleFullSubmit = async (data: { name: string; whatsapp: string; cpf: string }) => {
     setIsSubmitting(true);
     try {
+      // Fase 1: Sanitização - garantir que todos os dados estão limpos
+      const sanitizedPhone = getPhoneForAPI(data.whatsapp);
+      const sanitizedCPF = data.cpf.replace(/\D/g, '');
+      
       // Get current path to determine tenant context
       const currentPath = window.location.pathname;
       const pathSegments = currentPath.split('/').filter(segment => segment.length > 0);
@@ -126,8 +151,8 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: data.name,
-          cpf: data.cpf,
-          whatsapp: data.whatsapp,
+          cpf: sanitizedCPF,
+          whatsapp: sanitizedPhone,
         }),
       });
       
@@ -141,8 +166,8 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
         // Call onSubmit to transition to chat with lead data
         await onSubmit({
           name: data.name,
-          whatsapp: data.whatsapp,
-          cpf: data.cpf,
+          whatsapp: sanitizedPhone,
+          cpf: sanitizedCPF,
           status: 'LEAD', // Explicitly set status as LEAD
         });
         return;
@@ -157,10 +182,12 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
       
       // Fallback: try original onSubmit method
       try {
+        const sanitizedPhone = getPhoneForAPI(data.whatsapp);
+        const sanitizedCPF = data.cpf.replace(/\D/g, '');
         await onSubmit({
           name: data.name,
-          whatsapp: data.whatsapp,
-          cpf: data.cpf,
+          whatsapp: sanitizedPhone,
+          cpf: sanitizedCPF,
         });
       } catch (fallbackError) {
         console.error('[Onboarding] Fallback also failed:', fallbackError);
@@ -191,6 +218,27 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
     visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
   };
 
+  const handleConfirmPatient = async () => {
+    if (!patientData) return;
+    
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        whatsapp: patientData.whatsapp,
+        name: patientData.name,
+        cpf: patientData.cpf,
+        tipo_associacao: patientData.tipo_associacao,
+        nome_responsavel: patientData.nome_responsavel,
+        cpf_responsavel: patientData.cpf_responsavel,
+        status: patientData.status as any
+      }, true); // isReturning = true
+    } catch (error) {
+      console.error('Error confirming patient:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <AnimatePresence mode="wait">
       {step === 'phone' && (
@@ -218,15 +266,18 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
                         Seu WhatsApp (com DDD)
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="11987654321"
+                        <PhoneInput
+                          value={field.value}
+                          onChange={(formattedValue) => {
+                            field.onChange(formattedValue);
+                          }}
+                          onRawChange={(rawValue) => {
+                            setRawPhoneValue(rawValue);
+                            // Validate with raw value for form validation
+                            phoneForm.setValue('whatsapp', rawValue);
+                          }}
                           disabled={isSubmitting || isLoading}
                           className="h-12 text-lg"
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '');
-                            field.onChange(value);
-                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -374,6 +425,23 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
               Voltar
             </Button>
           </motion.div>
+        </motion.div>
+      )}
+
+      {step === 'confirmation' && patientData && (
+        <motion.div 
+          key="confirmation-step"
+          className="w-full"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
+          <PatientConfirmation
+            patientData={patientData}
+            onConfirm={handleConfirmPatient}
+            isLoading={isSubmitting || isLoading}
+          />
         </motion.div>
       )}
     </AnimatePresence>

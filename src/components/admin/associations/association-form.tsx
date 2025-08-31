@@ -22,6 +22,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Copy, Clock, Globe, Shield, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserManagementTab } from './user-management-tab';
+import { EndpointDiagnostics } from './endpoint-diagnostics';
 
 // Phase 2: Enhanced form validation schema with optional WordPress integration
 const associationSchema = z.object({
@@ -820,6 +821,17 @@ export function AssociationForm({ association, onSubmit, isLoading = false }: As
                       </div>
                     )}
                   </>
+                )}
+
+                {/* Endpoint Diagnostics - Only show for existing associations with WordPress integration */}
+                {association && (hasWordPressIntegration || hasWordPressDevIntegration) && (
+                  <div className="space-y-4">
+                    <Separator />
+                    
+                    <EndpointDiagnostics associationId={association.id} />
+                    
+                    <Separator />
+                  </div>
                 )}
 
                 {/* Test Connection - Only show if WordPress integration is configured */}
