@@ -23,10 +23,11 @@ import {
 } from '@/lib/services/conversation-state.service';
 
 /**
- * FASE 3: Função para construir contexto do paciente no Hybrid AI
+ * FASE 3: Função aprimorada para construir contexto do paciente no Hybrid AI
+ * Inclui lógica avançada de interlocutor para decisões contextuais
  */
 function buildPatientContextForAI(patient: any): string {
-  let context = `PERFIL DO PACIENTE:\n`;
+  let context = `PERFIL COMPLETO DO PACIENTE (FASE 3):\n`;
   context += `- Nome: ${patient.name}\n`;
   context += `- Status: ${patient.status || 'DESCONHECIDO'}\n`;
   
@@ -42,13 +43,32 @@ function buildPatientContextForAI(patient: any): string {
     context += `- Responsável: ${patient.nome_responsavel}\n`;
   }
   
+  if (patient.cpf_responsavel) {
+    context += `- CPF Responsável: ${patient.cpf_responsavel}\n`;
+  }
+  
+  // FASE 3: Análise de contexto de interlocutor
+  const isResponsibleScenario = patient.tipo_associacao === 'assoc_respon' && patient.nome_responsavel;
+  const interlocutorName = isResponsibleScenario ? patient.nome_responsavel : patient.name;
+  
+  context += `\nCONTEXTO DE INTERLOCUTOR (FASE 3):\n`;
+  if (isResponsibleScenario) {
+    context += `- CENÁRIO: Responsável falando pelo paciente\n`;
+    context += `- Interlocutor (quem digita): ${interlocutorName}\n`;
+    context += `- Paciente (atendimento para): ${patient.name}\n`;
+    context += `- INSTRUÇÃO: Dirija-se ao responsável, refira-se ao paciente na 3ª pessoa\n`;
+  } else {
+    context += `- CENÁRIO: Paciente falando diretamente\n`;
+    context += `- Interlocutor: ${interlocutorName}\n`;
+    context += `- INSTRUÇÃO: Dirija-se diretamente ao paciente\n`;
+  }
+  
   if (patient.status === 'MEMBRO') {
     context += `\nEste é um MEMBRO ativo. Use os dados para personalizar o atendimento.\n`;
-    if (patient.tipo_associacao === 'responsavel' && patient.nome_responsavel) {
-      context += `Pode referenciar o responsável "${patient.nome_responsavel}" se necessário.\n`;
-    }
+    context += `Forneça atendimento completo com base no perfil detalhado.\n`;
   } else if (patient.status === 'LEAD') {
     context += `\nEste é um LEAD. Foque em coletar informações para conversão em membro.\n`;
+    context += `Explique o processo de associação e benefícios de ser membro.\n`;
   }
   
   return context;
@@ -187,11 +207,19 @@ ANALYSIS GUIDELINES:
 5. If patient needs standard response → use getStandardResponse function
 6. If unclear → send_message with clarifying question
 
-PATIENT-SPECIFIC CONSIDERATIONS:
+PATIENT-SPECIFIC CONSIDERATIONS (FASE 3):
 - If patient status is LEAD: Focus on conversion and information collection
 - If patient status is MEMBRO: Provide full personalized service
 - Use patient data (CPF, responsible person) for identity verification when needed
 - Adapt responses based on association type and available patient data
+
+CRITICAL INTERLOCUTOR CONSIDERATIONS (FASE 3):
+- ALWAYS identify who is speaking (patient or responsible person)
+- ALWAYS adapt language based on interlocutor context
+- If responsible scenario: Address responsible person, refer to patient in 3rd person
+- If patient scenario: Address patient directly
+- Ensure medical instructions are clear about who should administer/take medication
+- Validate communication approach before generating responses
 
 Consider these factors:
 - Current conversation state: ${currentState}

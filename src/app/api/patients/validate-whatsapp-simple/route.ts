@@ -71,7 +71,12 @@ export async function POST(request: NextRequest) {
       });
       
       if (wordpressUser && wordpressUser.acf) {
-        console.log('[API] Caminho A: Paciente encontrado no WordPress - Sincronização Completa');
+        console.log('[API] FASE 1 - CORREÇÃO: Paciente encontrado no WordPress - Sincronização Completa');
+        console.log('[API] FASE 1 - CORREÇÃO: Dados ACF recebidos do WordPress:', {
+          hasAcf: !!wordpressUser.acf,
+          acfKeys: Object.keys(wordpressUser.acf),
+          acfData: wordpressUser.acf
+        });
         
         // Sincronizar com dados ACF completos
         const { syncPatientWithWordPressACF } = await import('@/lib/services/patient.service');

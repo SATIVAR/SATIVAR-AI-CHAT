@@ -13,7 +13,7 @@ import { Patient } from '@prisma/client';
  * Triggered: Start of new conversation
  * Process: Fetches greeting template and association name
  * Output: Final greeting string
- * FASE 3: Enhanced with patient context
+ * FASE 3: Enhanced with advanced patient and interlocutor context
  */
 export async function buildWelcomeMessage(
   associationConfig: Association, 
@@ -25,18 +25,32 @@ export async function buildWelcomeMessage(
   const associationName = associationConfig.publicDisplayName || associationConfig.name;
   let message = template.replace('{NOME_ASSOCIACAO}', associationName);
   
-  // FASE 3: Personalizar mensagem baseada no status do paciente
+  // FASE 3: Personalização avançada baseada no contexto do interlocutor
   if (patient) {
+    const isResponsibleScenario = patient.tipo_associacao === 'assoc_respon' && patient.nome_responsavel;
+    const interlocutorName = isResponsibleScenario ? patient.nome_responsavel : patient.name;
+    const patientName = patient.name;
+    
     if (patient.status === 'MEMBRO') {
-      // Para membros, adicionar saudação personalizada
-      if (patient.nome_responsavel && patient.tipo_associacao === 'responsavel') {
-        message += `\n\nOlá ${patient.name}! Vejo que você é responsável por ${patient.nome_responsavel}. Estou aqui para ajudar com qualquer necessidade relacionada à cannabis medicinal.`;
+      if (isResponsibleScenario) {
+        // Responsável falando pelo paciente membro
+        message += `\n\nOlá ${interlocutorName}! Vejo que você é responsável pelo paciente ${patientName}, que é membro da nossa associação. Estou aqui para ajudá-lo com qualquer necessidade relacionada ao tratamento de cannabis medicinal do ${patientName}.`;
+        message += `\n\nComo posso auxiliá-lo no cuidado do ${patientName} hoje?`;
       } else {
-        message += `\n\nOlá ${patient.name}! Como membro da nossa associação, estou aqui para ajudá-lo com seus produtos de cannabis medicinal.`;
+        // Paciente membro falando diretamente
+        message += `\n\nOlá ${patientName}! Como membro da nossa associação, estou aqui para ajudá-lo com seus produtos de cannabis medicinal.`;
+        message += `\n\nComo posso ajudá-lo hoje?`;
       }
     } else if (patient.status === 'LEAD') {
-      // Para leads, focar na conversão
-      message += `\n\nOlá ${patient.name}! Vejo que você ainda não completou seu processo de associação. Posso ajudá-lo a finalizar seu cadastro e encontrar os produtos ideais para suas necessidades.`;
+      if (isResponsibleScenario) {
+        // Responsável de um lead
+        message += `\n\nOlá ${interlocutorName}! Vejo que você está interessado em nossos serviços para ${patientName}. Ainda não completamos o processo de associação. Posso ajudá-lo a finalizar o cadastro do ${patientName} e encontrar os produtos ideais para as necessidades dele.`;
+        message += `\n\nGostaria que eu explicasse como funciona o processo de associação para ${patientName}?`;
+      } else {
+        // Lead falando diretamente
+        message += `\n\nOlá ${patientName}! Vejo que você ainda não completou seu processo de associação. Posso ajudá-lo a finalizar seu cadastro e encontrar os produtos ideais para suas necessidades.`;
+        message += `\n\nGostaria que eu explicasse como funciona nosso processo de associação?`;
+      }
     }
   }
   
@@ -194,7 +208,7 @@ function generateOrderNumber(): string {
 
 /**
  * Helper function to format order text
- * FASE 3: Enhanced with patient context
+ * FASE 3: Enhanced with advanced patient and interlocutor context
  */
 function formatOrderText(
   orderNumber: string,
@@ -207,17 +221,25 @@ function formatOrderText(
 ): string {
   let orderText = `📋 **PEDIDO ${orderNumber}**\n\n`;
   
-  // FASE 3: Adicionar informações contextuais do paciente
+  // FASE 3: Informações contextuais avançadas do paciente e interlocutor
   if (patient) {
+    const isResponsibleScenario = patient.tipo_associacao === 'assoc_respon' && patient.nome_responsavel;
+    const interlocutorName = isResponsibleScenario ? patient.nome_responsavel : patient.name;
+    const patientName = patient.name;
+    
     orderText += `👤 **DADOS DO PACIENTE:**\n`;
-    orderText += `Nome: ${patient.name}\n`;
+    orderText += `Nome: ${patientName}\n`;
     
     if (patient.status === 'MEMBRO' && patient.cpf) {
       orderText += `CPF: ${patient.cpf}\n`;
     }
     
-    if (patient.nome_responsavel && patient.tipo_associacao === 'responsavel') {
+    if (isResponsibleScenario) {
       orderText += `Responsável: ${patient.nome_responsavel}\n`;
+      if (patient.cpf_responsavel) {
+        orderText += `CPF Responsável: ${patient.cpf_responsavel}\n`;
+      }
+      orderText += `\n📝 **CONTEXTO:** Este pedido está sendo feito por ${interlocutorName} (responsável) para o paciente ${patientName}.\n`;
     }
     
     orderText += `\n`;
@@ -246,11 +268,27 @@ function formatOrderText(
   
   orderText += `**TOTAL: R$ ${total.toFixed(2)}**\n\n`;
   
-  // FASE 3: Personalizar confirmação baseada no status do paciente
-  if (patient?.status === 'MEMBRO') {
-    orderText += `Confirma o pedido? Como membro, você tem acesso a todos os nossos produtos. 🤔`;
-  } else if (patient?.status === 'LEAD') {
-    orderText += `Para finalizar o pedido, precisaremos completar seu cadastro como membro. Confirma? 🤔`;
+  // FASE 3: Confirmação contextualizada baseada no interlocutor
+  if (patient) {
+    const isResponsibleScenario = patient.tipo_associacao === 'assoc_respon' && patient.nome_responsavel;
+    const interlocutorName = isResponsibleScenario ? patient.nome_responsavel : patient.name;
+    const patientName = patient.name;
+    
+    if (patient.status === 'MEMBRO') {
+      if (isResponsibleScenario) {
+        orderText += `Confirma este pedido para ${patientName}? Como responsável, você tem acesso a todos os nossos produtos para o tratamento dele. 🤔`;
+      } else {
+        orderText += `Confirma o pedido? Como membro, você tem acesso a todos os nossos produtos. 🤔`;
+      }
+    } else if (patient.status === 'LEAD') {
+      if (isResponsibleScenario) {
+        orderText += `Para finalizar este pedido para ${patientName}, precisaremos completar o cadastro dele como membro. Você confirma? 🤔`;
+      } else {
+        orderText += `Para finalizar o pedido, precisaremos completar seu cadastro como membro. Confirma? 🤔`;
+      }
+    } else {
+      orderText += `Confirma o pedido? 🤔`;
+    }
   } else {
     orderText += `Confirma o pedido? 🤔`;
   }

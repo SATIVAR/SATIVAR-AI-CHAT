@@ -122,8 +122,27 @@ export async function POST(request: NextRequest) {
 
     // If this is a new conversation, add welcome message customized for the association
     if (conversation.Message.length === 0) {
-      const welcomeMessage = isNewPatient
-        ? `Olá ${patient.name}! 👋 Bem-vindo(a) ao SATIZAP da ${tenantContext.association.name}! 
+      // FASE 2: Determinar contexto do interlocutor para personalizar mensagem de boas-vindas
+      const isResponsibleScenario = patient.tipo_associacao === 'assoc_respon' && patient.nome_responsavel;
+      const interlocutorName = isResponsibleScenario ? patient.nome_responsavel : patient.name;
+      
+      let welcomeMessage = '';
+      
+      if (isNewPatient) {
+        if (isResponsibleScenario) {
+          welcomeMessage = `Olá ${interlocutorName}! 👋 Bem-vindo(a) ao SATIZAP da ${tenantContext.association.name}! 
+
+Sou seu assistente especializado em cannabis medicinal. Entendo que você está cuidando do atendimento para ${patient.name}. Estou aqui para ajudá-lo(a) a encontrar os produtos mais adequados para as necessidades do paciente.
+
+Como posso ajudar ${patient.name} hoje? Você pode:
+• Enviar uma foto da prescrição médica do ${patient.name}
+• Descrever os sintomas que ${patient.name} deseja tratar
+• Perguntar sobre produtos específicos
+• Solicitar orientações sobre dosagem
+
+Vamos começar?`;
+        } else {
+          welcomeMessage = `Olá ${patient.name}! 👋 Bem-vindo(a) ao SATIZAP da ${tenantContext.association.name}! 
 
 Sou seu assistente especializado em cannabis medicinal. Estou aqui para ajudá-lo(a) a encontrar os produtos mais adequados para suas necessidades.
 
@@ -133,17 +152,35 @@ Como posso ajudá-lo(a) hoje? Você pode:
 • Perguntar sobre produtos específicos
 • Solicitar orientações sobre dosagem
 
-Vamos começar?`
-        : `Olá ${patient.name}! 👋 Que bom ter você de volta ao SATIZAP da ${tenantContext.association.name}! 
+Vamos começar?`;
+        }
+      } else {
+        if (isResponsibleScenario) {
+          welcomeMessage = `Olá ${interlocutorName}! 👋 Que bom ter você de volta ao SATIZAP da ${tenantContext.association.name}! 
+
+Como posso ajudar ${patient.name} hoje?`;
+        } else {
+          welcomeMessage = `Olá ${patient.name}! 👋 Que bom ter você de volta ao SATIZAP da ${tenantContext.association.name}! 
 
 Como posso ajudá-lo(a) hoje?`;
+        }
+      }
 
       await addMessage(
         conversation.id,
         welcomeMessage,
         'ia',
         undefined,
-        { isWelcomeMessage: true, associationName: tenantContext.association.name }
+        { 
+          isWelcomeMessage: true, 
+          associationName: tenantContext.association.name,
+          // FASE 2: Salvar contexto do interlocutor na mensagem
+          interlocutorContext: isResponsibleScenario ? {
+            interlocutorName,
+            isResponsibleScenario,
+            patientName: patient.name
+          } : undefined
+        }
       );
     }
 

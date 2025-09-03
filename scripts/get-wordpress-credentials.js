@@ -10,15 +10,15 @@ async function getWordPressCredentials() {
   try {
     console.log('🔍 Buscando credenciais do WordPress no banco...');
     
-    // Buscar associação de teste
+    // Buscar associação sativar
     const association = await prisma.association.findFirst({
       where: {
-        subdomain: 'teste'
+        subdomain: 'sativar'
       }
     });
     
     if (!association) {
-      console.log('❌ Associação "teste" não encontrada');
+      console.log('❌ Associação "sativar" não encontrada');
       return null;
     }
     

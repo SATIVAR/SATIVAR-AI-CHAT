@@ -157,24 +157,30 @@ model Owner {
 }
 
 model Patient {
-  id               String         @id
-  name             String
-  whatsapp         String         @unique
-  email            String?
-  cpf              String?
-  tipo_associacao  String?
-  nome_responsavel String?
-  cpf_responsavel  String?
-  status           PatientStatus  @default(LEAD)
-  wordpress_id     String?
-  isActive         Boolean        @default(true)
-  associationId    String
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime
-  Conversation     Conversation[]
-  Association      Association    @relation(fields: [associationId], references: [id])
+  id                   String         @id
+  name                 String
+  whatsapp             String         @unique
+  email                String?
+  cpf                  String?
+  tipo_associacao      String?
+  nome_responsavel     String?
+  cpf_responsavel      String?
+  acf_sync_status      String?        @default("pending")
+  last_context_update  DateTime?
+  status               PatientStatus  @default(LEAD)
+  wordpress_id         String?
+  isActive             Boolean        @default(true)
+  associationId        String
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime
+  Conversation         Conversation[]
+  Association          Association    @relation(fields: [associationId], references: [id])
 
   @@index([associationId], map: "Patient_associationId_fkey")
+  @@index([whatsapp, associationId], map: "Patient_whatsapp_association_idx")
+  @@index([tipo_associacao], map: "Patient_tipo_associacao_idx")
+  @@index([last_context_update], map: "Patient_context_update_idx")
+  @@index([whatsapp, associationId, tipo_associacao], map: "Patient_context_lookup_idx")
 }
 
 model Product {

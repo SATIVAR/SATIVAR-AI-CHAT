@@ -177,7 +177,7 @@ export default function PatientsAdminClientWrapper({ associations }: PatientsAdm
                 onSearch={(query) => loadPatients(selectedAssociationId, 1, 10, query)}
                 onStatusFilter={(status) => loadPatients(selectedAssociationId, 1, 10, '', status)}
                 onPageChange={(page) => loadPatients(selectedAssociationId, page)}
-                onDeleteLead={(patientId) => {
+                onDeletePatient={(patientId) => {
                   // Remove patient from local state and reload data
                   setPatients(prev => prev.filter(p => p.id !== patientId));
                   setTotalCount(prev => prev - 1);

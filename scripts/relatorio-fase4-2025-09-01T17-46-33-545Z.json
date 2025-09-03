@@ -1,0 +1,405 @@
+{
+  "backend": {
+    "success": false,
+    "results": {
+      "phase1": {
+        "passed": 3,
+        "failed": 2,
+        "tests": [
+          {
+            "name": "Conectividade do Banco de Dados",
+            "passed": true,
+            "details": "1 associações encontradas",
+            "timestamp": "2025-09-01T17:46:23.740Z"
+          },
+          {
+            "name": "Estrutura da Tabela Patient",
+            "passed": true,
+            "details": "Todos os campos ACF presentes",
+            "timestamp": "2025-09-01T17:46:24.067Z"
+          },
+          {
+            "name": "API Validation - responsible_scenario",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.067Z"
+          },
+          {
+            "name": "API Validation - direct_patient_scenario",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.068Z"
+          },
+          {
+            "name": "Sincronização Completa no BD",
+            "passed": "98765432100",
+            "details": "Todos os campos ACF salvos",
+            "timestamp": "2025-09-01T17:46:24.290Z"
+          }
+        ]
+      },
+      "phase2": {
+        "passed": 3,
+        "failed": 3,
+        "tests": [
+          {
+            "name": "Identificação Interlocutor - responsible_scenario",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.291Z"
+          },
+          {
+            "name": "Identificação Interlocutor - direct_patient_scenario",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.291Z"
+          },
+          {
+            "name": "Identificação Interlocutor - new_patient_scenario",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.292Z"
+          },
+          {
+            "name": "Mensagem Contextual - Responsável",
+            "passed": true,
+            "details": "Mensagem inclui ambos os nomes",
+            "timestamp": "2025-09-01T17:46:24.292Z"
+          },
+          {
+            "name": "Mensagem Contextual - Paciente Direto",
+            "passed": true,
+            "details": "Mensagem personalizada",
+            "timestamp": "2025-09-01T17:46:24.292Z"
+          },
+          {
+            "name": "Componente PatientConfirmation",
+            "passed": true,
+            "details": "Lógica de interlocutor implementada",
+            "timestamp": "2025-09-01T17:46:24.294Z"
+          }
+        ]
+      },
+      "phase3": {
+        "passed": 6,
+        "failed": 7,
+        "tests": [
+          {
+            "name": "Contexto IA - Patient Route",
+            "passed": true,
+            "details": "Mensagens de boas-vindas contextualizadas",
+            "timestamp": "2025-09-01T17:46:24.296Z"
+          },
+          {
+            "name": "IA Contextual - responsible_scenario - Msg 1",
+            "passed": true,
+            "details": "Dirige-se corretamente ao interlocutor",
+            "timestamp": "2025-09-01T17:46:24.296Z"
+          },
+          {
+            "name": "IA Contextual - responsible_scenario - Msg 2",
+            "passed": false,
+            "details": "Dirige-se corretamente ao interlocutor",
+            "timestamp": "2025-09-01T17:46:24.297Z"
+          },
+          {
+            "name": "IA Contextual - responsible_scenario - Msg 3",
+            "passed": false,
+            "details": "Dirige-se corretamente ao interlocutor",
+            "timestamp": "2025-09-01T17:46:24.297Z"
+          },
+          {
+            "name": "IA Contextual - direct_patient_scenario - Msg 1",
+            "passed": false,
+            "details": "Dirige-se corretamente ao interlocutor",
+            "timestamp": "2025-09-01T17:46:24.297Z"
+          },
+          {
+            "name": "IA Contextual - direct_patient_scenario - Msg 2",
+            "passed": false,
+            "details": "Dirige-se corretamente ao interlocutor",
+            "timestamp": "2025-09-01T17:46:24.298Z"
+          },
+          {
+            "name": "IA Contextual - direct_patient_scenario - Msg 3",
+            "passed": false,
+            "details": "Dirige-se corretamente ao interlocutor",
+            "timestamp": "2025-09-01T17:46:24.298Z"
+          },
+          {
+            "name": "Template - responsible_welcome",
+            "passed": true,
+            "details": "Template contextualizado corretamente",
+            "timestamp": "2025-09-01T17:46:24.298Z"
+          },
+          {
+            "name": "Template - direct_welcome",
+            "passed": true,
+            "details": "Template contextualizado corretamente",
+            "timestamp": "2025-09-01T17:46:24.298Z"
+          },
+          {
+            "name": "Template - responsible_order",
+            "passed": true,
+            "details": "Template contextualizado corretamente",
+            "timestamp": "2025-09-01T17:46:24.299Z"
+          },
+          {
+            "name": "Template - direct_order",
+            "passed": false,
+            "details": "Template contextualizado corretamente",
+            "timestamp": "2025-09-01T17:46:24.299Z"
+          },
+          {
+            "name": "Fluxo E2E - Responsável",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.300Z"
+          },
+          {
+            "name": "Persistência de Dados",
+            "passed": true,
+            "details": "Dados e conversa persistidos corretamente",
+            "timestamp": "2025-09-01T17:46:24.941Z"
+          }
+        ]
+      },
+      "overall": {
+        "passed": 12,
+        "failed": 12,
+        "total": 24
+      }
+    },
+    "timestamp": "2025-09-01T17:46:24.954Z"
+  },
+  "interface": {
+    "success": false,
+    "results": {
+      "components": {
+        "passed": 11,
+        "failed": 1,
+        "tests": [
+          {
+            "name": "OnboardingForm - Funcionalidades",
+            "passed": true,
+            "details": "Todas as funcionalidades implementadas",
+            "timestamp": "2025-09-01T17:46:24.958Z"
+          },
+          {
+            "name": "OnboardingForm - Tratamento de Erros",
+            "passed": true,
+            "details": "Tratamento de erros implementado",
+            "timestamp": "2025-09-01T17:46:24.958Z"
+          },
+          {
+            "name": "OnboardingForm - Acessibilidade",
+            "passed": true,
+            "details": "Elementos de acessibilidade presentes",
+            "timestamp": "2025-09-01T17:46:24.958Z"
+          },
+          {
+            "name": "PatientConfirmation - Lógica Contextual",
+            "passed": false,
+            "details": "Lógica de interlocutor implementada",
+            "timestamp": "2025-09-01T17:46:24.960Z"
+          },
+          {
+            "name": "PatientConfirmation - Formatação",
+            "passed": true,
+            "details": "Formatação de dados implementada",
+            "timestamp": "2025-09-01T17:46:24.960Z"
+          },
+          {
+            "name": "PatientConfirmation - Design Responsivo",
+            "passed": true,
+            "details": "Classes responsivas presentes",
+            "timestamp": "2025-09-01T17:46:24.960Z"
+          },
+          {
+            "name": "UI Component - button",
+            "passed": true,
+            "details": "Componente UI implementado corretamente",
+            "timestamp": "2025-09-01T17:46:24.961Z"
+          },
+          {
+            "name": "UI Component - input",
+            "passed": true,
+            "details": "Componente UI implementado corretamente",
+            "timestamp": "2025-09-01T17:46:24.962Z"
+          },
+          {
+            "name": "UI Component - form",
+            "passed": true,
+            "details": "Componente UI implementado corretamente",
+            "timestamp": "2025-09-01T17:46:24.963Z"
+          },
+          {
+            "name": "UI Component - card",
+            "passed": true,
+            "details": "Componente UI implementado corretamente",
+            "timestamp": "2025-09-01T17:46:24.964Z"
+          },
+          {
+            "name": "UI Component - badge",
+            "passed": true,
+            "details": "Componente UI implementado corretamente",
+            "timestamp": "2025-09-01T17:46:24.965Z"
+          },
+          {
+            "name": "UI Component - alert",
+            "passed": true,
+            "details": "Componente UI implementado corretamente",
+            "timestamp": "2025-09-01T17:46:24.966Z"
+          }
+        ]
+      },
+      "ux": {
+        "passed": 9,
+        "failed": 4,
+        "tests": [
+          {
+            "name": "Fluxo de Navegação - Fluxo Paciente Existente",
+            "passed": true,
+            "details": "WhatsApp → Confirmação → Chat",
+            "timestamp": "2025-09-01T17:46:24.966Z"
+          },
+          {
+            "name": "Fluxo de Navegação - Fluxo Novo Paciente",
+            "passed": true,
+            "details": "WhatsApp → Dados → Chat",
+            "timestamp": "2025-09-01T17:46:24.966Z"
+          },
+          {
+            "name": "Fluxo de Navegação - Fluxo Responsável",
+            "passed": false,
+            "details": "WhatsApp → Confirmação Contextual → Chat Contextual",
+            "timestamp": "2025-09-01T17:46:24.967Z"
+          },
+          {
+            "name": "Mensagem Contextual - Responsável - Boas-vindas",
+            "passed": true,
+            "details": "Mensagem personalizada corretamente",
+            "timestamp": "2025-09-01T17:46:24.967Z"
+          },
+          {
+            "name": "Mensagem Contextual - Paciente - Boas-vindas",
+            "passed": true,
+            "details": "Mensagem personalizada corretamente",
+            "timestamp": "2025-09-01T17:46:24.967Z"
+          },
+          {
+            "name": "Mensagem Contextual - Responsável - Confirmação",
+            "passed": true,
+            "details": "Mensagem personalizada corretamente",
+            "timestamp": "2025-09-01T17:46:24.967Z"
+          },
+          {
+            "name": "Mensagem Contextual - Paciente - Confirmação",
+            "passed": false,
+            "details": "Mensagem personalizada corretamente",
+            "timestamp": "2025-09-01T17:46:24.967Z"
+          },
+          {
+            "name": "Mensagem Contextual - Responsável - IA",
+            "passed": true,
+            "details": "Mensagem personalizada corretamente",
+            "timestamp": "2025-09-01T17:46:24.967Z"
+          },
+          {
+            "name": "Mensagem Contextual - Paciente - IA",
+            "passed": true,
+            "details": "Mensagem personalizada corretamente",
+            "timestamp": "2025-09-01T17:46:24.967Z"
+          },
+          {
+            "name": "Estados de Loading e Feedback",
+            "passed": true,
+            "details": "Estados de loading implementados",
+            "timestamp": "2025-09-01T17:46:24.968Z"
+          },
+          {
+            "name": "Animações e Transições",
+            "passed": true,
+            "details": "Animações implementadas com Framer Motion",
+            "timestamp": "2025-09-01T17:46:24.969Z"
+          },
+          {
+            "name": "API - Validação WhatsApp",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.975Z"
+          },
+          {
+            "name": "API - Registro de Pacientes",
+            "passed": false,
+            "details": "Erro: fetch is not a function",
+            "timestamp": "2025-09-01T17:46:24.975Z"
+          }
+        ]
+      },
+      "accessibility": {
+        "passed": 2,
+        "failed": 3,
+        "tests": [
+          {
+            "name": "Semântica - onboarding-form",
+            "passed": false,
+            "details": "Elementos semânticos e ARIA implementados",
+            "timestamp": "2025-09-01T17:46:24.970Z"
+          },
+          {
+            "name": "Semântica - patient-confirmation",
+            "passed": false,
+            "details": "Elementos semânticos e ARIA implementados",
+            "timestamp": "2025-09-01T17:46:24.971Z"
+          },
+          {
+            "name": "Sistema de Cores e Contraste",
+            "passed": true,
+            "details": "Suporte a modo escuro e sistema de cores",
+            "timestamp": "2025-09-01T17:46:24.972Z"
+          },
+          {
+            "name": "Design Responsivo",
+            "passed": false,
+            "details": "0 componentes com classes responsivas",
+            "timestamp": "2025-09-01T17:46:24.973Z"
+          },
+          {
+            "name": "Validação de Formulários",
+            "passed": true,
+            "details": "Validação com mensagens de erro implementada",
+            "timestamp": "2025-09-01T17:46:24.974Z"
+          }
+        ]
+      },
+      "overall": {
+        "passed": 22,
+        "failed": 8,
+        "total": 30
+      }
+    },
+    "timestamp": "2025-09-01T17:46:24.977Z"
+  },
+  "manual": {
+    "skipped": true,
+    "timestamp": "2025-09-01T17:46:33.540Z"
+  },
+  "overall": {
+    "startTime": 1756748783014,
+    "endTime": 1756748793540,
+    "duration": 10526,
+    "totalTests": 54,
+    "passedTests": 34,
+    "failedTests": 20,
+    "successRate": 62.96296296296296,
+    "status": "needs_improvement"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "system": "SatiZap",
+    "phase": "Fase 4 - Validação Abrangente",
+    "environment": "development",
+    "timestamp": "2025-09-01T17:46:33.545Z"
+  }
+}

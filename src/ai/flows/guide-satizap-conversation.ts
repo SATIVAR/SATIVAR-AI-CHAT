@@ -9,11 +9,12 @@ import { hybridAIOrchestrator, HybridAIInput } from './hybrid-ai-orchestrator';
 import { getConversationState, initializeConversationState } from '@/lib/services/conversation-state.service';
 
 /**
- * FASE 3: Função para construir contexto do perfil completo do paciente
+ * FASE 3: Função aprimorada para construir contexto do perfil completo do paciente
  * Injeta dados contextuais detalhados para personalizar a conversa
+ * FASE 3: Inclui lógica avançada de "Interlocutor" com instruções específicas para IA
  */
 function buildPatientProfileContext(patient: Patient): string {
-  let context = `\n\n=== PERFIL COMPLETO DO PACIENTE ===\n`;
+  let context = `\n\n=== PERFIL COMPLETO DO PACIENTE (FASE 3) ===\n`;
   
   // Dados básicos
   context += `Nome: ${patient.name}\n`;
@@ -45,30 +46,76 @@ function buildPatientProfileContext(patient: Patient): string {
     context += `ID no WordPress: ${patient.wordpress_id}\n`;
   }
   
-  context += `\n=== INSTRUÇÕES PARA USO DO PERFIL ===\n`;
+  // FASE 3: LÓGICA AVANÇADA DE INTERLOCUTOR (Paciente vs. Responsável)
+  const isResponsibleScenario = patient.tipo_associacao === 'assoc_respon' && patient.nome_responsavel;
+  const interlocutorName = isResponsibleScenario ? patient.nome_responsavel : patient.name;
+  const patientName = patient.name;
+  
+  context += `\n=== CONTEXTO AVANÇADO DO INTERLOCUTOR (FASE 3) ===\n`;
+  
+  if (isResponsibleScenario) {
+    context += `🔹 CENÁRIO: RESPONSÁVEL FALANDO PELO PACIENTE\n`;
+    context += `• Interlocutor (quem está digitando): ${interlocutorName}\n`;
+    context += `• Paciente (para quem é o atendimento): ${patientName}\n`;
+    context += `• Tipo de atendimento: Via Responsável\n`;
+    context += `\n=== INSTRUÇÕES CRÍTICAS PARA RESPONSÁVEL (FASE 3) ===\n`;
+    context += `• SEMPRE se dirija ao responsável "${interlocutorName}" diretamente usando "você"\n`;
+    context += `• SEMPRE se refira ao paciente "${patientName}" na terceira pessoa\n`;
+    context += `• EXEMPLOS CORRETOS:\n`;
+    context += `  - "Como o(a) ${patientName} está se sentindo hoje?"\n`;
+    context += `  - "Que sintomas o(a) ${patientName} tem apresentado?"\n`;
+    context += `  - "Recomendo que ${patientName} comece com esta dosagem..."\n`;
+    context += `  - "Você pode administrar este produto ao ${patientName} da seguinte forma..."\n`;
+    context += `• EXEMPLOS INCORRETOS (NUNCA USE):\n`;
+    context += `  - "Como você está se sentindo?" (deve ser "Como o(a) ${patientName} está se sentindo?")\n`;
+    context += `  - "Que sintomas você tem?" (deve ser "Que sintomas o(a) ${patientName} tem?")\n`;
+    context += `• Ao criar pedidos, confirme: "Os dados de entrega são do paciente ${patientName}, correto?"\n`;
+    context += `• Mantenha o responsável informado: "Vou explicar como você deve administrar isso ao ${patientName}"\n`;
+    context += `• Reconheça o papel: "Entendo que você está cuidando do ${patientName}. Como posso ajudá-lo?"\n`;
+    context += `• Para dosagem: "Oriente ${patientName} a começar com..." ou "Você pode dar ao ${patientName}..."\n`;
+  } else {
+    context += `🔹 CENÁRIO: PACIENTE FALANDO DIRETAMENTE\n`;
+    context += `• Interlocutor (quem está digitando): ${interlocutorName}\n`;
+    context += `• Paciente (mesmo que o interlocutor): ${patientName}\n`;
+    context += `• Tipo de atendimento: Direto\n`;
+    context += `\n=== INSTRUÇÕES ESPECÍFICAS PARA PACIENTE DIRETO (FASE 3) ===\n`;
+    context += `• Se dirija diretamente ao paciente usando "você"\n`;
+    context += `• Use linguagem direta e pessoal: "Como você está se sentindo?"\n`;
+    context += `• EXEMPLOS CORRETOS:\n`;
+    context += `  - "Como você está se sentindo hoje?"\n`;
+    context += `  - "Que sintomas você tem apresentado?"\n`;
+    context += `  - "Recomendo que você comece com esta dosagem..."\n`;
+    context += `• Mantenha o tom pessoal e direto\n`;
+  }
+  
+  context += `\n=== INSTRUÇÕES GERAIS PARA USO DO PERFIL (FASE 3) ===\n`;
   
   if (patient.status === 'MEMBRO') {
     context += `• Este é um MEMBRO ativo da associação\n`;
     context += `• Use os dados detalhados para personalizar a conversa\n`;
-    
-    if (patient.tipo_associacao === 'responsavel' && patient.nome_responsavel) {
-      context += `• Pode se referir ao responsável "${patient.nome_responsavel}" para confirmar informações\n`;
-    }
+    context += `• Pode referenciar informações específicas do perfil quando relevante\n`;
     
     if (patient.cpf || patient.cpf_responsavel) {
       context += `• Pode usar o CPF como fator secundário de verificação de identidade se necessário\n`;
     }
     
     context += `• Forneça atendimento completo e personalizado\n`;
+    context += `• Demonstre conhecimento do histórico do paciente quando apropriado\n`;
   } else if (patient.status === 'LEAD') {
     context += `• Este é um LEAD (perfil incompleto)\n`;
-    context += `• Primeira tarefa: explicar o processo de associação\n`;
-    context += `• Objetivo: coletar informações necessárias para converter em MEMBRO\n`;
+    context += `• PRIORIDADE: explicar o processo de associação de forma clara\n`;
+    context += `• OBJETIVO: coletar informações necessárias para converter em MEMBRO\n`;
     context += `• Campos a coletar: tipo de associação, dados do responsável (se aplicável)\n`;
-    context += `• Mantenha o foco na conversão do lead\n`;
+    context += `• Mantenha o foco na conversão do lead com abordagem educativa\n`;
+    context += `• Explique os benefícios de ser membro da associação\n`;
   }
   
-  context += `\n`;
+  context += `\n=== VALIDAÇÃO DE CONTEXTO (FASE 3) ===\n`;
+  context += `• Antes de responder, confirme mentalmente:\n`;
+  context += `  1. Estou me dirigindo à pessoa correta (${interlocutorName})?\n`;
+  context += `  2. Estou me referindo ao paciente corretamente (${patientName})?\n`;
+  context += `  3. Estou usando a linguagem apropriada para o cenário?\n`;
+  context += `  4. Minhas instruções são claras sobre quem deve fazer o quê?\n`;
   
   return context;
 }
@@ -86,9 +133,18 @@ const guideSatizapConversationInputSchema = z.object({
     fullName: z.string(),
     whatsapp: z.string(),
     email: z.string().optional(),
+    // Fase 2: Interlocutor context
+    interlocutorName: z.string().optional(),
+    isResponsibleScenario: z.boolean().optional(),
   }).optional().describe('New patient form data when no existing patient'),
   // Phase 3: Hybrid mode flag
   useHybridMode: z.boolean().default(false).describe('Whether to use the hybrid AI orchestrator'),
+  // Fase 2: Interlocutor context for existing patients
+  interlocutorContext: z.object({
+    interlocutorName: z.string(),
+    isResponsibleScenario: z.boolean(),
+    patientName: z.string(),
+  }).optional().describe('Context about who is speaking in the chat'),
 });
 
 const guideSatizapConversationOutputSchema = z.object({
@@ -110,7 +166,7 @@ export const guideSatizapConversation = ai.defineFlow(
     outputSchema: guideSatizapConversationOutputSchema,
   },
   async (input) => {
-    const { conversationId, patientMessage, conversationHistory, patient, association, tenantId, patientFormData, useHybridMode } = input;
+    const { conversationId, patientMessage, conversationHistory, patient, association, tenantId, patientFormData, useHybridMode, interlocutorContext } = input;
     
     console.log(`[guideSatizapConversation] Starting for tenant: ${tenantId} ${useHybridMode ? '(HYBRID MODE)' : '(LEGACY MODE)'}`);
     
@@ -250,11 +306,48 @@ export const guideSatizapConversation = ai.defineFlow(
       ? `\n\nRESTRIÇÕES OBRIGATÓRIAS:\nSob nenhuma circunstância você deve:\n${effectiveAssociation.aiRestrictions}\n`
       : '';
 
-    // FASE 3: Injeção do Perfil Completo do Paciente
+    // FASE 2: Injeção do Perfil Completo do Paciente + Contexto do Interlocutor
     // Carregar o registro completo do paciente com todos os novos campos ACF
     let patientProfileContext = '';
     if (patient) {
       patientProfileContext = buildPatientProfileContext(patient);
+    }
+    
+    // FASE 3: Contexto dinâmico aprimorado do interlocutor
+    let interlocutorInstructions = '';
+    if (interlocutorContext) {
+      interlocutorInstructions = `\n\n=== CONTEXTO DINÂMICO AVANÇADO DO INTERLOCUTOR (FASE 3) ===\n`;
+      if (interlocutorContext.isResponsibleScenario) {
+        interlocutorInstructions += `🔹 ATENÇÃO CRÍTICA: Você está conversando com ${interlocutorContext.interlocutorName} (RESPONSÁVEL)\n`;
+        interlocutorInstructions += `🔹 O atendimento é para o paciente: ${interlocutorContext.patientName}\n`;
+        interlocutorInstructions += `🔹 REGRA FUNDAMENTAL: SEMPRE se dirija ao responsável diretamente, mas refira-se ao paciente na terceira pessoa\n`;
+        interlocutorInstructions += `\n🔹 EXEMPLOS OBRIGATÓRIOS DE USO:\n`;
+        interlocutorInstructions += `  ✅ CORRETO: "Como o(a) ${interlocutorContext.patientName} está se sentindo hoje?"\n`;
+        interlocutorInstructions += `  ❌ INCORRETO: "Como você está se sentindo hoje?"\n`;
+        interlocutorInstructions += `  ✅ CORRETO: "Que sintomas o(a) ${interlocutorContext.patientName} tem apresentado?"\n`;
+        interlocutorInstructions += `  ❌ INCORRETO: "Que sintomas você tem apresentado?"\n`;
+        interlocutorInstructions += `  ✅ CORRETO: "Você pode administrar este produto ao ${interlocutorContext.patientName} da seguinte forma..."\n`;
+        interlocutorInstructions += `  ❌ INCORRETO: "Você pode tomar este produto da seguinte forma..."\n`;
+        interlocutorInstructions += `\n🔹 INSTRUÇÕES ESPECÍFICAS PARA PEDIDOS:\n`;
+        interlocutorInstructions += `  • Confirme: "Os dados de entrega são do paciente ${interlocutorContext.patientName}, correto?"\n`;
+        interlocutorInstructions += `  • Use: "Este pedido é para ${interlocutorContext.patientName}, você como responsável está fazendo a solicitação"\n`;
+        interlocutorInstructions += `\n🔹 INSTRUÇÕES PARA DOSAGEM E TRATAMENTO:\n`;
+        interlocutorInstructions += `  • Use: "Oriente ${interlocutorContext.patientName} a começar com..."\n`;
+        interlocutorInstructions += `  • Use: "Você pode dar ao ${interlocutorContext.patientName}..."\n`;
+        interlocutorInstructions += `  • Use: "Monitore como ${interlocutorContext.patientName} reage ao tratamento"\n`;
+      } else {
+        interlocutorInstructions += `🔹 CENÁRIO: Conversando diretamente com o paciente ${interlocutorContext.interlocutorName}\n`;
+        interlocutorInstructions += `🔹 Use linguagem direta e pessoal ("você", "seu", "sua")\n`;
+        interlocutorInstructions += `🔹 EXEMPLOS CORRETOS:\n`;
+        interlocutorInstructions += `  ✅ "Como você está se sentindo hoje?"\n`;
+        interlocutorInstructions += `  ✅ "Que sintomas você tem apresentado?"\n`;
+        interlocutorInstructions += `  ✅ "Recomendo que você comece com esta dosagem..."\n`;
+      }
+      interlocutorInstructions += `\n🔹 VALIDAÇÃO ANTES DE RESPONDER:\n`;
+      interlocutorInstructions += `  1. Confirme: Estou me dirigindo à pessoa correta?\n`;
+      interlocutorInstructions += `  2. Confirme: Estou usando a linguagem apropriada para o cenário?\n`;
+      interlocutorInstructions += `  3. Confirme: Minhas instruções são claras sobre quem deve fazer o quê?\n`;
+      interlocutorInstructions += `\n`;
     }
     
     // Phase 2: Enhanced API configuration with dynamic context
@@ -274,7 +367,38 @@ export const guideSatizapConversation = ai.defineFlow(
     const dynamicContextStatus = dynamicContext 
       ? `\n- Contexto dinâmico carregado com sucesso para: ${dynamicContext.associationName}`
       : '\n- Usando contexto estático';
+    
     const systemPrompt = `Você é SATIZAP, um assistente especializado em cannabis medicinal altamente qualificado e empático. Você trabalha para ${associationName}, uma associação de pacientes de cannabis medicinal.${associationContext}${aiDirectives}${aiRestrictions}${apiConfigStatus}${dynamicContextStatus}
+
+=== FASE 3: INSTRUÇÕES CRÍTICAS DE COMUNICAÇÃO CONTEXTUAL ===
+
+ANTES DE GERAR QUALQUER RESPOSTA, VOCÊ DEVE SEGUIR ESTE PROTOCOLO:
+
+1. ANÁLISE DO CONTEXTO:
+   - Identifique quem está falando no chat (paciente ou responsável)
+   - Identifique para quem é o atendimento (sempre o paciente)
+   - Determine o tipo de relacionamento (direto ou via responsável)
+
+2. ADAPTAÇÃO DA LINGUAGEM:
+   - CENÁRIO RESPONSÁVEL: Se dirija ao responsável usando "você", refira-se ao paciente pelo nome na 3ª pessoa
+   - CENÁRIO PACIENTE: Se dirija diretamente ao paciente usando "você"
+
+3. VALIDAÇÃO OBRIGATÓRIA:
+   - Sua resposta está direcionada à pessoa correta?
+   - Você está se referindo ao paciente da forma apropriada?
+   - Suas instruções médicas são claras sobre quem deve administrar/tomar?
+
+4. EXEMPLOS PRÁTICOS:
+   RESPONSÁVEL FALANDO:
+   ✅ "Como o João está se sentindo hoje?"
+   ✅ "Você pode dar este óleo ao João pela manhã"
+   ✅ "Monitore como a Maria reage ao tratamento"
+   ❌ "Como você está se sentindo?" (deve especificar o paciente)
+   
+   PACIENTE FALANDO:
+   ✅ "Como você está se sentindo hoje?"
+   ✅ "Recomendo que você tome este óleo pela manhã"
+   ✅ "Monitore como você reage ao tratamento"
 
 PERSONALIDADE E COMPORTAMENTO:
 - Seja empático, profissional e acolhedor
@@ -340,10 +464,31 @@ CAPACIDADES ESPECIAIS:
 - Recomendações personalizadas baseadas em sintomas
 - Orientações sobre dosagem inicial
 
-DADOS DO PACIENTE ATUAL:
+DADOS DO PACIENTE ATUAL (FASE 3 - CONTEXTO COMPLETO):
 Nome: ${patient.name}
 WhatsApp: ${patient.whatsapp}
-${patient.email ? `Email: ${patient.email}` : ''}${patientProfileContext}
+${patient.email ? `Email: ${patient.email}` : ''}${patientProfileContext}${interlocutorInstructions}
+
+=== INSTRUÇÕES CRÍTICAS DE COMUNICAÇÃO (FASE 3) ===
+ANTES DE GERAR QUALQUER RESPOSTA, VOCÊ DEVE:
+
+1. IDENTIFICAR O INTERLOCUTOR:
+   - Quem está digitando no chat? (${interlocutorContext?.interlocutorName || patient.name})
+   - Esta pessoa é o paciente ou o responsável?
+
+2. ADAPTAR SUA LINGUAGEM:
+   - Se for responsável: dirija-se ao responsável, refira-se ao paciente na 3ª pessoa
+   - Se for paciente: dirija-se diretamente ao paciente
+
+3. VALIDAR SUA RESPOSTA:
+   - Sua resposta está direcionada à pessoa correta?
+   - Você está se referindo ao paciente da forma apropriada?
+   - Suas instruções são claras sobre quem deve fazer o quê?
+
+4. PERSONALIZAR O ATENDIMENTO:
+   - Use os dados do perfil para personalizar a conversa
+   - Considere o status (MEMBRO vs LEAD) para adaptar a abordagem
+   - Mantenha consistência com o contexto estabelecido
 
 HISTÓRICO DA CONVERSA:
 ${historyText}

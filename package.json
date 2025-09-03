@@ -22,7 +22,16 @@
     "test:middleware": "node scripts/test-middleware-graceful-handling.js",
     "verify:middleware": "node scripts/verify-middleware-implementation.js",
     "test:urls": "node scripts/test-all-url-scenarios.js",
-    "test:functional": "node scripts/test-functional-scenarios.js"
+    "test:functional": "node scripts/test-functional-scenarios.js",
+    "fase4:completa": "node scripts/fase4-executar-validacao-completa.js",
+    "fase4:backend": "node scripts/fase4-validacao-abrangente.js",
+    "fase4:interface": "node scripts/fase4-validacao-interface.js",
+    "fase4:manual": "node scripts/fase4-teste-manual-interativo.js",
+    "validacao:completa": "npm run fase4:completa",
+    "test:context-analyzer": "node scripts/test-context-analyzer.js",
+    "migrate:interlocutor": "node scripts/migrate-interlocutor-fields.js",
+    "migrate:interlocutor:test": "node scripts/test-interlocutor-migration.js",
+    "migrate:interlocutor:rollback": "node scripts/rollback-interlocutor-fields.js"
   },
   "dependencies": {
     "@fontsource/pt-sans": "^5.0.21",

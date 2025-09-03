@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Message, OrderItem, UserDetails, Client, Order } from '@/lib/types';
+import { Message, OrderItem, UserDetails, Client, Order, Patient } from '@/lib/types';
 import ChatMessages from './chat-messages';
 import ChatInput from './chat-input';
 import { Logo } from '@/components/icons/logo';
@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { ShoppingCart, PackageCheck } from 'lucide-react';
 import CartModal from './cart-modal';
 import { UserMenu } from './user-menu';
+import { ConversationContextIndicator } from './conversation-context-indicator';
 
 interface ChatLayoutProps {
   messages: Message[];
@@ -29,6 +30,13 @@ interface ChatLayoutProps {
   activeOrderId: string | null;
   activeOrderStatus: Order['status'] | null;
   onOpenOrderDetails: () => void;
+  // FASE 3: Contexto do interlocutor
+  patientData?: Patient;
+  interlocutorContext?: {
+    interlocutorName: string;
+    isResponsibleScenario: boolean;
+    patientName: string;
+  };
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -46,6 +54,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   activeOrderId,
   activeOrderStatus,
   onOpenOrderDetails,
+  // FASE 3: Contexto do interlocutor
+  patientData,
+  interlocutorContext,
 }) => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const totalItems = order.reduce((acc, item) => acc + item.quantity, 0);
@@ -95,6 +106,18 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
                     <UserMenu client={userDetails} onSave={onUpdateClient} />
                 </div>
             </header>
+
+            {/* FASE 3: Indicador de contexto da conversa */}
+            {interlocutorContext && (
+              <div className="px-4 py-2 border-b bg-secondary/30 dark:bg-card/50">
+                <ConversationContextIndicator
+                  patientName={interlocutorContext.patientName}
+                  interlocutorName={interlocutorContext.interlocutorName}
+                  isResponsibleScenario={interlocutorContext.isResponsibleScenario}
+                  patientStatus={patientData?.status as 'LEAD' | 'MEMBRO'}
+                />
+              </div>
+            )}
 
             <ChatMessages
                 messages={messages}

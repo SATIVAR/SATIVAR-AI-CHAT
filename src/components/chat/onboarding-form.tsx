@@ -223,6 +223,10 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
     
     setIsSubmitting(true);
     try {
+      // Determine interlocutor context for chat session
+      const isResponsibleScenario = patientData.tipo_associacao === 'assoc_respon' && patientData.nome_responsavel;
+      const interlocutorName = isResponsibleScenario ? patientData.nome_responsavel : patientData.name;
+      
       await onSubmit({
         whatsapp: patientData.whatsapp,
         name: patientData.name,
@@ -230,7 +234,10 @@ export function OnboardingForm({ onSubmit, isLoading = false }: OnboardingFormPr
         tipo_associacao: patientData.tipo_associacao,
         nome_responsavel: patientData.nome_responsavel,
         cpf_responsavel: patientData.cpf_responsavel,
-        status: patientData.status as any
+        status: patientData.status as any,
+        // Add interlocutor context for chat session
+        interlocutorName,
+        isResponsibleScenario
       }, true); // isReturning = true
     } catch (error) {
       console.error('Error confirming patient:', error);

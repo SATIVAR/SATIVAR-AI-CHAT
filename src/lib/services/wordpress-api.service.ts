@@ -437,9 +437,11 @@ export class WordPressApiService {
       }
       
       console.log(`[FASE 1 - LOG 4C] MATCH FOUND! Client ID: ${clientData.id}`);
+      console.log(`[FASE 1 - LOG 4C] Raw client data ACF:`, clientData.acf);
       
       const normalizedUser = this.normalizeWordPressUser(clientData);
       console.log(`[FASE 1 - LOG 4C] Returning user: ${normalizedUser.name}`);
+      console.log(`[FASE 1 - LOG 4C] Normalized user ACF:`, normalizedUser.acf);
       
       return normalizedUser;
       
@@ -453,8 +455,15 @@ export class WordPressApiService {
   
   /**
    * Normaliza dados do cliente WordPress para formato padrão
+   * CORREÇÃO FASE 1: Garantir que os dados ACF sejam preservados integralmente
    */
   private normalizeWordPressUser(userData: any): WordPressUser & { acf?: any } {
+    console.log('[FASE 1 - CORREÇÃO] Normalizando dados do WordPress:', {
+      id: userData.id || userData.ID,
+      hasAcf: !!userData.acf,
+      acfKeys: userData.acf ? Object.keys(userData.acf) : []
+    });
+
     // Extrair nome de múltiplas fontes possíveis
     let name = userData.name || userData.display_name;
     
@@ -475,15 +484,32 @@ export class WordPressApiService {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
     
-    return {
+    // CORREÇÃO FASE 1: Preservar TODOS os dados ACF sem modificação
+    const acfData = userData.acf || {};
+    
+    console.log('[FASE 1 - CORREÇÃO] Dados ACF preservados:', {
+      telefone: acfData.telefone,
+      nome_completo: acfData.nome_completo,
+      tipo_associacao: acfData.tipo_associacao,
+      nome_responsavel: acfData.nome_responsavel,
+      cpf_responsavel: acfData.cpf_responsavel,
+      cpf: acfData.cpf,
+      totalFields: Object.keys(acfData).length
+    });
+    
+    const normalizedUser = {
       id: userData.id || userData.ID,
       username: userData.username || userData.user_login || `cliente_${userData.id}`,
       name: name,
       first_name: userData.first_name || firstName,
       last_name: userData.last_name || lastName,
       email: userData.email || userData.user_email || `cliente${userData.id}@temp.local`,
-      acf: userData.acf || {}
+      acf: acfData // CORREÇÃO: Usar acfData preservado
     } as WordPressUser & { acf?: any };
+    
+    console.log('[FASE 1 - CORREÇÃO] Usuário normalizado criado com ACF:', !!normalizedUser.acf);
+    
+    return normalizedUser;
   }
 
   async findOrCreatePatient(patientData: {

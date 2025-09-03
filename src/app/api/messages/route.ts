@@ -111,6 +111,21 @@ export async function POST(request: NextRequest) {
         const useHybridMode = process.env.ENABLE_HYBRID_AI === 'true' || false;
         const tenantId = tenantContext?.subdomain || fullAssociation?.subdomain || 'default';
         
+        // FASE 2: Determinar contexto do interlocutor baseado nos dados do paciente
+        let interlocutorContext = undefined;
+        if (updatedConversation.Patient) {
+          const patient = updatedConversation.Patient;
+          const isResponsibleScenario = patient.tipo_associacao === 'assoc_respon' && patient.nome_responsavel;
+          
+          if (isResponsibleScenario || patient.nome_responsavel) {
+            interlocutorContext = {
+              interlocutorName: isResponsibleScenario ? patient.nome_responsavel : patient.name,
+              isResponsibleScenario,
+              patientName: patient.name
+            };
+          }
+        }
+        
         const aiResponseData = await guideSatizapConversation({
           conversationId,
           patientMessage: content,
@@ -118,7 +133,9 @@ export async function POST(request: NextRequest) {
           patient: updatedConversation.Patient,
           association: fullAssociation,
           tenantId,
-          useHybridMode
+          useHybridMode,
+          // FASE 2: Passar contexto do interlocutor para a IA
+          interlocutorContext
         });
 
         // Check if AI is requesting handoff

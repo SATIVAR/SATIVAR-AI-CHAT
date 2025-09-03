@@ -27,7 +27,7 @@ interface PatientsDataTableProps {
   onSearch?: (query: string) => void;
   onStatusFilter?: (status: 'LEAD' | 'MEMBRO' | 'all') => void;
   onPageChange?: (page: number) => void;
-  onDeleteLead?: (patientId: string) => void;
+  onDeletePatient?: (patientId: string) => void;
   associationId?: string;
 }
 
@@ -38,7 +38,7 @@ export default function PatientsDataTable({
   onSearch, 
   onStatusFilter, 
   onPageChange,
-  onDeleteLead,
+  onDeletePatient,
   associationId
 }: PatientsDataTableProps) {
   const router = useRouter();
@@ -102,16 +102,7 @@ export default function PatientsDataTable({
     setIsDetailsModalOpen(true);
   };
 
-  const handleDeleteLead = async (patient: Patient) => {
-    if (patient.status !== 'LEAD') {
-      toast({
-        title: "Erro",
-        description: "Apenas leads não convertidos podem ser excluídos.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleDeletePatient = async (patient: Patient) => {
     setDeletingPatientId(patient.id);
 
     try {
@@ -120,28 +111,29 @@ export default function PatientsDataTable({
       });
 
       if (response.ok) {
+        const statusText = patient.status === 'LEAD' ? 'Lead' : 'Paciente';
         toast({
           title: "Sucesso",
-          description: "Lead excluído com sucesso.",
+          description: `${statusText} excluído com sucesso do CRM.`,
         });
         
         // Call callback to refresh data
-        if (onDeleteLead) {
-          onDeleteLead(patient.id);
+        if (onDeletePatient) {
+          onDeletePatient(patient.id);
         }
       } else {
         const errorData = await response.json();
         toast({
           title: "Erro",
-          description: errorData.error || "Erro ao excluir lead.",
+          description: errorData.error || "Erro ao excluir paciente.",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('Erro ao excluir lead:', error);
+      console.error('Erro ao excluir paciente:', error);
       toast({
         title: "Erro",
-        description: "Erro ao excluir lead. Tente novamente.",
+        description: "Erro ao excluir paciente. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -241,44 +233,49 @@ export default function PatientsDataTable({
             <Eye className="h-4 w-4" />
           </Button>
           
-          {/* Botão de excluir apenas para LEADs */}
-          {row.original.status === 'LEAD' && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  title="Excluir lead não convertido"
+          {/* Botão de excluir para qualquer paciente */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                title={`Excluir ${row.original.status === 'LEAD' ? 'lead' : 'paciente'} do CRM`}
+                disabled={deletingPatientId === row.original.id}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Excluir {row.original.status === 'LEAD' ? 'Lead' : 'Paciente'}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir {row.original.status === 'LEAD' ? 'o lead' : 'o paciente'} <strong>{row.original.name}</strong> do CRM?
+                  <br />
+                  <span className="text-sm text-muted-foreground mt-2 block">
+                    Esta ação remove o paciente apenas do CRM SatiZap. 
+                    {row.original.status === 'MEMBRO' && row.original.wordpress_id && (
+                      <span className="block mt-1 text-blue-600">
+                        Os dados no WordPress permanecerão inalterados.
+                      </span>
+                    )}
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleDeletePatient(row.original)}
+                  className="bg-red-600 hover:bg-red-700"
                   disabled={deletingPatientId === row.original.id}
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja excluir o lead <strong>{row.original.name}</strong>?
-                    <br />
-                    <span className="text-sm text-muted-foreground mt-2 block">
-                      Esta ação não pode ser desfeita. Apenas leads não convertidos podem ser excluídos.
-                    </span>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => handleDeleteLead(row.original)}
-                    className="bg-red-600 hover:bg-red-700"
-                    disabled={deletingPatientId === row.original.id}
-                  >
-                    {deletingPatientId === row.original.id ? 'Excluindo...' : 'Excluir'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+                  {deletingPatientId === row.original.id ? 'Excluindo...' : 'Excluir do CRM'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       ),
     },

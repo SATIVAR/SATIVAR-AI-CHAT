@@ -126,6 +126,44 @@ export interface PatientFormData {
   cpf_responsavel?: string;
   status?: PatientStatus;
   wordpress_id?: string;
+  // Fase 2: Interlocutor context for chat sessions
+  interlocutorName?: string;
+  isResponsibleScenario?: boolean;
+}
+
+// Enhanced Patient Data with sync metadata - Task 2 Implementation
+export interface EnhancedPatientData extends Patient {
+  interlocutorContext?: InterlocutorContext;
+  syncMetadata?: {
+    lastWordPressSync: Date;
+    acfFieldsPreserved: boolean;
+    syncSource: 'wordpress_acf' | 'satizap' | 'lead_capture';
+    validationPassed?: boolean;
+    discrepanciesFound?: number;
+    operation?: 'create' | 'update' | 'failed';
+    wordpressId?: string;
+    acfFieldsCount?: number;
+  };
+}
+
+// ACF Validation and Sync Types - Task 2 Implementation
+export interface ACFValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface SyncDiscrepancy {
+  type: 'ACF_VALIDATION_FAILED' | 'DATA_DISCREPANCY_DETECTED' | 'UPDATE_FAILED' | 'CREATE_FAILED' | 'SYNC_EXCEPTION';
+  timestamp: string;
+  details: any;
+}
+
+export interface DataDiscrepancy {
+  field: string;
+  existingValue: any;
+  newValue: any;
+  severity: 'low' | 'medium' | 'high';
 }
 
 export interface ConversationMessage extends Omit<PrismaMessage, 'metadata'> {
@@ -270,6 +308,51 @@ export interface AIOrchestrationResponse {
   parameters?: Record<string, any>;
   message?: string;
   nextState?: HybridConversationState;
+}
+
+// Interlocutor Context Types (Phase 2 - Interlocutor Logic)
+export interface InterlocutorContext {
+  scenario: 'patient' | 'responsible';
+  interlocutorName: string;
+  patientName: string;
+  isResponsibleScenario: boolean;
+  contextualData: {
+    tipo_associacao: string;
+    nome_responsavel?: string;
+    cpf_responsavel?: string;
+  };
+}
+
+export interface ChatSessionContext {
+  sessionId: string;
+  patientId: string;
+  interlocutorContext: InterlocutorContext;
+  conversationState: {
+    addressingMode: 'direct' | 'third_person';
+    currentSpeaker: string; // interlocutorName
+    patientReference: string; // patientName
+  };
+  aiInstructions: {
+    basePrompt: string;
+    contextualRules: string[];
+    messageTemplates: Record<string, string>;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ContextAnalysisResult {
+  success: boolean;
+  context?: InterlocutorContext;
+  error?: string;
+  fallbackReason?: 'unknown_association_type' | 'missing_responsible_data' | 'ambiguous_context';
+}
+
+export interface ContextFallback {
+  scenario: 'unknown_association_type' | 'missing_responsible_data' | 'ambiguous_context';
+  fallbackStrategy: 'assume_patient' | 'request_clarification' | 'use_default';
+  userMessage: string;
+  logLevel: 'warning' | 'error';
 }
 
 // Order Quote Structure (Phase 2)

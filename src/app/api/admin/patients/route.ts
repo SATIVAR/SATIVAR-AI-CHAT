@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPatients, deletePatientLead } from '@/lib/services/patient.service';
+import { getPatients, deletePatient } from '@/lib/services/patient.service';
 import { getUserSessionFromRequest } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -77,16 +77,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Acesso negado a esta associação' }, { status: 403 });
     }
 
-    const result = await deletePatientLead(patientId, associationId);
+    const result = await deletePatient(patientId, associationId);
 
     if (result.success) {
-      return NextResponse.json({ message: 'Lead excluído com sucesso' });
+      return NextResponse.json({ message: 'Paciente excluído com sucesso do CRM' });
     } else {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
   } catch (error) {
-    console.error('Erro ao excluir lead:', error);
+    console.error('Erro ao excluir paciente:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
