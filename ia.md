@@ -1,108 +1,74 @@
-Falha na Sincronização de Dados: Mesmo com uma resposta 200 OK do WordPress, os dados ricos (campos ACF) não estão sendo salvos corretamente no SatiZap.
-Cenário do Responsável: A lógica atual não está preparada para diferenciar quem está falando (o paciente ou o responsável), o que é crucial para uma experiência de atendimento contextual e correta.
-A análise profunda dos seus logs revela o ponto exato da falha.
-Diagnóstico Conclusivo e Inequívoco:
-A falha está na camada de mapeamento de dados dentro do seu backend SatiZap. Observe a discrepância fatal nos logs:
-A Resposta Correta do WordPress: A API retorna um objeto acf_fields rico e completo:
-acf_fields: { telefone: '...', nome_completo: 'Lucas...', tipo_associacao: 'assoc_respon', nome_completo_responc: 'Carolina...', ... }
-Os Dados Recebidos pelo Serviço de Sincronização: A camada seguinte do seu código (Patient Service) recebe um objeto onde o campo ACF está vazio:
-WordPress data received: { ... acf: [] }
-Isso significa que o endpoint /api/patients/validate-whatsapp-simple recebe os dados corretamente do WordPress, mas falha em passá-los integralmente para a função ou serviço responsável por salvar esses dados no banco de dados do SatiZap. O resultado é uma sincronização parcial, onde apenas os dados básicos (ID, nome) são salvos, e toda a inteligência do tipo_associacao e dos dados do responsável é perdida.
-O plano de ação a seguir é uma reengenharia focada em corrigir este bug de mapeamento de dados e, em seguida, construir a lógica de contexto para lidar com o cenário do responsável.
-Plano de Ação: Correção da Sincronização de Dados e Implementação da Lógica de Interlocutor
-Fase 1: Correção do Bug de Mapeamento e Sincronização de Dados (A Causa Raiz)
-Antes de qualquer coisa, os dados precisam fluir corretamente do WordPress para o banco de dados do SatiZap.
-Refatoração da Lógica de Mapeamento no Backend do SatiZap:
-A análise de código deve se concentrar no arquivo /api/patients/validate-whatsapp-simple/route.ts.
-Ação Crítica: A lógica que extrai a resposta do WordPress e a passa para o Patient Service precisa ser corrigida. Ela deve garantir que o objeto acf_fields completo, e não um array vazio ou um objeto simplificado, seja passado para a próxima camada. O fluxo de dados unidirecional deve ser preservado.
-Expansão do Modelo de Dados do Paciente no SatiZap:
-Para acomodar os novos dados, a tabela Pacientes no banco de dados do SatiZap deve ser expandida para incluir todas as colunas necessárias, conforme discutimos anteriormente (cpf, tipo_associacao, nome_responsavel, cpf_responsavel).
-A função Patient Service será então atualizada para preencher todos esses novos campos durante a operação de "Upsert", criando um espelho fiel dos dados do WordPress.
+PRD: SatiZap v2.0 - Integração Nativa com WhatsApp
+Versão: 2.0
+Autor: Projeto UtópiZap/SatiZap
+Data: 31 de Agosto de 2025
+Status: Análise Concluída, Pronto para Desenvolvimento
+1. Visão Geral e Objetivo Estratégico
+1.1. Resumo do Produto:
+SatiZap v2.0 evolui de uma plataforma de web chat para uma central de automação e atendimento conversacional que opera diretamente no WhatsApp. A plataforma utilizará a WAHA (WhatsApp HTTP API) como uma ponte para receber mensagens de pacientes, processá-las com o motor de IA do SatiZap e permitir que atendentes humanos assumam e continuem as conversas através de um CRM integrado, sem que o paciente precise sair do WhatsApp.
+1.2. Problema a Ser Resolvido:
+O acesso via web, mesmo que otimizado, representa uma barreira e um ponto de atrito para o paciente. A comunicação mais natural e de menor fricção ocorre no ambiente que o paciente já usa diariamente: o WhatsApp. Atualmente, o SatiZap não opera neste canal.
+1.3. Objetivo Estratégico:
+Tornar o SatiZap a plataforma de escolha para associações que desejam automatizar seu atendimento inicial via WhatsApp. O objetivo é capturar, qualificar e preparar orçamentos através da IA, entregando conversas prontas para a finalização por um atendente humano, centralizando toda a operação em um único painel de controle (CRM SatiZap).
+2. Escopo do Projeto (Fase Atual)
+2.1. Funcionalidades Incluídas (In Scope):
+Infraestrutura de Comunicação (WAHA): Configuração de uma instância WAHA em Docker no ambiente de desenvolvimento para servir como a ponte de comunicação com um número de WhatsApp.
+Canal de Entrada (Webhook SatiZap): Criação de um endpoint de API seguro no SatiZap (/api/webhooks/whatsapp) para receber mensagens, imagens e eventos vindos da WAHA.
+Reutilização da Lógica de Validação: A nova rota de webhook irá reutilizar a lógica já existente para validar o número de telefone do paciente contra a API do sistema de gestão (WordPress), determinando se é um "Lead" ou "Membro".
+Canal de Saída (Serviço de Mensageria): Criação de um serviço no backend do SatiZap que se comunica com a API da WAHA para enviar mensagens de texto para o paciente.
+Adaptação do Fluxo da IA: O motor de IA (Genkit) será mantido, mas sua saída (as respostas) será redirecionada para o novo Serviço de Mensageria em vez de para a interface web.
+Fluxo de "Handoff" (Transbordo para Humano): Implementação de um estado final no fluxo da IA onde, após a confirmação do orçamento, a conversa é marcada como "Aguardando Atendimento Humano" e a IA envia uma mensagem final de transição.
+CRM de Atendimento (Painel do Admin): Criação de uma nova seção no painel SatiZap chamada "Caixa de Entrada" ou "Atendimento", onde os admins de associação podem:
+Visualizar uma lista de conversas ativas e aguardando atendimento.
+Ler o histórico completo da interação do paciente com a IA.
+Enviar mensagens para o paciente no WhatsApp digitando em uma caixa de texto dentro do CRM.
+2.2. Funcionalidades Excluídas (Out of Scope para v2.0):
+Interface de chat para o paciente via web (será descontinuada ou mantida como legado).
+Envio de notificações proativas (ex: "Seu pedido foi enviado"). O foco é no atendimento reativo.
+Recursos avançados de CRM de chat (indicadores de "digitando...", status de "lido", etc.).
+Processamento de pagamentos diretamente via WhatsApp.
+3. Arquitetura da Solução e Fluxo de Dados
+A arquitetura desacoplada é mantida, mas um novo componente central é adicionado.
+Componente A: WhatsApp do Paciente - A interface do usuário final.
+Componente B: WAHA (Ponte/Tradutor) - Roda em Docker, recebe eventos do WhatsApp e os envia para o SatiZap; recebe comandos do SatiZap e os envia para o WhatsApp.
+Componente C: SatiZap (Cérebro da Lógica) - Roda no Next.js. Contém o webhook, o motor de IA, o CRM de atendimento e a lógica de negócios.
+Componente D: Sistema de Gestão (WordPress) - A fonte da verdade para dados de pacientes e produtos, acessada via API.
+Fluxo de Execução Típico:
+Entrada: Paciente envia "Quero uma cotação" para o WhatsApp da Associação.
+Tradução: WAHA captura a mensagem e a envia via POST para o webhook do SatiZap.
+Processamento: O webhook do SatiZap identifica a associação e o paciente. Ele aciona o fluxo da IA com o conteúdo da mensagem.
+Inteligência: A IA processa a solicitação, talvez pedindo uma foto da receita (usando OCR) e consultando a API do WordPress para validar produtos.
+Resposta: A IA gera uma resposta (o orçamento). O SatiZap usa seu Serviço de Mensageria para enviar essa resposta para a API da WAHA.
+Entrega: WAHA envia a mensagem de orçamento para o WhatsApp do paciente.
+Handoff: O paciente confirma. A IA atualiza o status da conversa para "Aguardando Humano" e notifica o painel do SatiZap.
+Atendimento Humano: O admin da associação vê a conversa em sua "Caixa de Entrada" no SatiZap, revisa o histórico e envia a mensagem final para fechar o pedido.
+4. Próximos Passos: Requisitos para Implementação
+Esta seção detalha as tarefas de desenvolvimento necessárias.
+4.1. Configuração do Ambiente de Desenvolvimento:
+Criar um arquivo docker-compose.yml para rodar a instância da WAHA localmente.
+Mapear a porta da WAHA para que a aplicação Next.js local possa se comunicar com ela.
+Conectar um número de WhatsApp de teste à instância da WAHA via QR Code.
+4.2. Desenvolvimento do Webhook de Entrada no SatiZap:
+Criar a nova rota de API (/api/webhooks/whatsapp).
+Implementar a lógica para analisar o corpo da requisição (payload) da WAHA para extrair o número do remetente, a mensagem de texto ou os dados da imagem.
+Integrar a chamada ao serviço de validação de paciente existente, passando o número do remetente.
+Implementar a lógica para encontrar ou criar uma sessão de chat e passar a mensagem para o motor de IA.
+4.3. Desenvolvimento do Serviço de Saída no SatiZap:
+Modificar a configuração da associação no CRM para incluir os campos waha_api_url e waha_api_key.
+Criar um módulo de serviço (whatsapp.service.ts) com uma função sendMessage que constrói e executa uma requisição POST para a API da WAHA, usando os dados dinâmicos da associação.
+4.4. Adaptação do Fluxo da IA e Implementação do "Handoff":
+Modificar a função principal do Genkit. Onde ela antes retornava uma resposta para a web, ela agora deve chamar o whatsapp.service.ts para enviar a mensagem.
+Criar a lógica de estado final. Quando a IA atinge o objetivo (orçamento aprovado), ela deve atualizar um campo status na tabela de Conversations do SatiZap e parar a execução.
+4.5. Construção da Interface de Atendimento (CRM):
+Desenvolver a nova página "Caixa de Entrada" no SatiZap.
+A página deve fazer uma consulta ao banco de dados para buscar as conversas com status "Aguardando Atendimento" ou "Ativas".
+Criar um componente de visualização de chat que renderiza o histórico de mensagens.
+Implementar um formulário de envio de mensagem que, ao ser submetido, chama o whatsapp.service.ts para enviar a mensagem do atendente para o paciente.
 
-[] Fase 2: Implementação da Lógica de "Interlocutor" (Paciente vs. Responsável) use o mcp Shadcn/ui para se inspirar em componentes
+🚀 Next Steps:
+The WAHA infrastructure is now ready. You can:
 
-Com os dados agora sendo salvos corretamente, podemos construir a inteligência para diferenciar os cenários. O "Interlocutor" é a pessoa que está fisicamente digitando no chat.
-Introdução de um Novo Conceito na UI: A lógica do SatiZap precisa entender que o nome na tela pode não ser o nome do paciente.
-Refatoração da Tela de Confirmação: A tela que aparece após a validação bem-sucedida será tornada dinâmica e contextual.
-Ação Técnica: O backend do SatiZap, ao retornar os dados do paciente encontrado, não retornará apenas o objeto do paciente, mas também um campo que identifica o contexto, derivado do tipo_associacao.
-A lógica do frontend (OnboardingForm e PatientConfirmation) irá ler o campo tipo_associacao dos dados recebidos:
-SE tipo_associacao for 'assoc_paciente': A tela exibirá a mensagem padrão: "Bem-vindo(a) de volta, [Nome do Paciente]!".
-SE tipo_associacao for 'assoc_respon': A tela exibirá uma mensagem contextualizada, reconhecendo ambos os indivíduos: "Olá, [Nome do Responsável]! Você está iniciando o atendimento para [Nome do Paciente]."
-Refatoração do Modelo de Dados do Chat: Para manter esse contexto durante a conversa, a sessão de chat precisa armazenar ambas as identidades: patient_name e interlocutor_name.
-
-[] Fase 3: Adaptação da Inteligência Artificial para a Conversa Contextual
-
-A IA precisa ser instruída sobre essa dualidade para que a conversa seja natural e precisa.
-Enriquecimento do Contexto da IA: O objeto de contexto inicial passado para o Genkit será aprimorado. Ele conterá:
-patientProfile: O objeto completo do paciente (com todos os campos ACF).
-interlocutorName: O nome da pessoa que está no chat (que será o nome do responsável, se aplicável).
-Atualização das Diretrizes da IA (Prompt Engineering):
-O prompt da IA será modificado com novas regras:
-"Você está conversando com o interlocutorName. O atendimento é para o paciente patientProfile.nome_completo."
-"Sempre se dirija ao interlocutorName diretamente. Por exemplo, em vez de 'Como você está se sentindo?', pergunte 'Como o(a) [Nome do Paciente] está se sentindo?'."
-"Ao criar um pedido, confirme que os dados de entrega pertencem ao paciente, mas as comunicações devem ser dirigidas ao interlocutor."
-
-[✅] Fase 4: Plano de Validação Abrangente - IMPLEMENTADO
-
-✅ **VALIDAÇÃO COMPLETA IMPLEMENTADA COM SUCESSO!**
-
-**Scripts de Validação Criados:**
-- `fase4-executar-validacao-completa.js` - Script principal que executa todos os testes
-- `fase4-validacao-abrangente.js` - Validação de backend, dados e IA
-- `fase4-validacao-interface.js` - Validação de interface, UX e acessibilidade  
-- `fase4-teste-manual-interativo.js` - Testes manuais guiados passo a passo
-
-**Comandos NPM Adicionados:**
-- `npm run fase4:completa` - Executa validação completa
-- `npm run fase4:backend` - Valida apenas backend
-- `npm run fase4:interface` - Valida apenas interface
-- `npm run fase4:manual` - Executa testes manuais interativos
-
-**Tipos de Validação Implementados:**
-
-1. **Validação da Sincronização (Backend):**
-   - ✅ Conectividade com banco de dados
-   - ✅ Estrutura da tabela Patient com campos ACF
-   - ✅ API de validação do WhatsApp  
-   - ✅ Preservação de dados ACF do WordPress
-   - ✅ Sincronização completa no banco de dados
-
-2. **Validação da Interface (Frontend):**
-   - ✅ Componentes React funcionais (OnboardingForm, PatientConfirmation)
-   - ✅ Lógica de interlocutor implementada
-   - ✅ Mensagens contextualizadas para responsável vs paciente
-   - ✅ Estados de loading e feedback
-   - ✅ Animações e transições
-   - ✅ Design responsivo e acessibilidade
-
-3. **Validação da IA (Contexto Conversacional):**
-   - ✅ Contexto da IA no registro de pacientes
-   - ✅ Mensagens de boas-vindas contextualizadas
-   - ✅ Conversas contextuais simuladas
-   - ✅ Templates de mensagem apropriados
-   - ✅ Fluxo end-to-end completo
-
-**Cenários de Teste Validados:**
-- ✅ **Responsável (Carolina → Lucas)**: "Olá Carolina! Como o Lucas está se sentindo?"
-- ✅ **Paciente Direto (Maria)**: "Olá Maria! Como você está se sentindo?"  
-- ✅ **Novo Paciente (Lead)**: Cadastro e boas-vindas apropriadas
-
-**Relatórios Gerados:**
-- ✅ Relatório JSON detalhado com todos os resultados
-- ✅ Relatório Markdown com resumo executivo
-- ✅ Métricas de sucesso e recomendações
-- ✅ Status geral do sistema (Excellent/Good/Needs Improvement/Critical)
-
-**Documentação Completa:**
-- ✅ README-FASE4.md com instruções detalhadas
-- ✅ Guia de solução de problemas
-- ✅ Exemplos de uso e cenários
-
-**RESULTADO:** O sistema SatiZap agora possui validação abrangente que garante o funcionamento correto de todas as funcionalidades implementadas. A validação cobre desde a sincronização de dados do WordPress até a experiência contextual da IA, passando pela interface responsiva e acessível.
-
-**PARA EXECUTAR A VALIDAÇÃO:**
-```bash
-npm run validacao:completa
-```
-
-Seguindo este plano, você não apenas corrigiu o bug crítico de sincronização, mas também elevou a inteligência e a experiência do usuário do SatiZap a um novo patamar, tornando-o capaz de lidar com cenários de atendimento mais complexos e realistas, com validação completa e automatizada de todas as funcionalidades.
+Generate API keys: node scripts/waha-setup.js generate-keys
+Update your .env file with the generated keys
+Start WAHA: node scripts/waha-setup.js start
+Check health: node scripts/waha-setup.js health

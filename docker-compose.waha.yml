@@ -1,0 +1,69 @@
+services:
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: waha-whatsapp
+    restart: unless-stopped
+    ports:
+      - "${WAHA_PORT:-3000}:3000"
+    environment:
+      # WAHA Configuration
+      - WAHA_WEBHOOK_URL=${WAHA_WEBHOOK_URL:-http://host.docker.internal:9002/api/webhooks/whatsapp}
+      - WAHA_WEBHOOK_EVENTS=message,message.ack,session.status
+      - WAHA_WEBHOOK_RETRIES=3
+      
+      # Security
+      - WAHA_API_KEY=${WAHA_API_KEY:-satizapwahaapi@}
+      - WAHA_WEBHOOK_SECRET=${WAHA_WEBHOOK_SECRET:-dd0dc3ffd4d00d27777f5f8bea3d693ba92785c29c4ac009a6eceeab9ad27ae0}
+      
+      # Session Configuration
+      - WAHA_SESSION_STORE_TYPE=file
+      - WAHA_SESSION_STORE_PATH=/app/sessions
+      
+      # Logging
+      - WAHA_LOG_LEVEL=${WAHA_LOG_LEVEL:-info}
+      - WAHA_LOG_FORMAT=json
+      
+      # Performance
+      - WAHA_MAX_SESSIONS=${WAHA_MAX_SESSIONS:-10}
+      - WAHA_SESSION_TIMEOUT=${WAHA_SESSION_TIMEOUT:-300000}
+      
+    volumes:
+      - waha_sessions:/app/sessions
+      - waha_media:/app/media
+    
+    networks:
+      - waha-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for session storage (production recommended)
+  redis:
+    image: redis:7-alpine
+    container_name: waha-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - waha-network
+    profiles:
+      - redis
+
+volumes:
+  waha_sessions:
+    driver: local
+  waha_media:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  waha-network:
+    driver: bridge
+    name: waha-network

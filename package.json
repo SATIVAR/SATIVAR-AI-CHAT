@@ -31,7 +31,12 @@
     "test:context-analyzer": "node scripts/test-context-analyzer.js",
     "migrate:interlocutor": "node scripts/migrate-interlocutor-fields.js",
     "migrate:interlocutor:test": "node scripts/test-interlocutor-migration.js",
-    "migrate:interlocutor:rollback": "node scripts/rollback-interlocutor-fields.js"
+    "migrate:interlocutor:rollback": "node scripts/rollback-interlocutor-fields.js",
+    "whatsapp:test": "node scripts/test-whatsapp-integration.js",
+    "whatsapp:test-simple": "node scripts/test-whatsapp-simple.js",
+    "whatsapp:setup": "node scripts/setup-whatsapp-complete.js",
+    "whatsapp:webhook": "node scripts/setup-waha-webhook.js",
+    "notifications:test": "node scripts/test-notification-system.js"
   },
   "dependencies": {
     "@fontsource/pt-sans": "^5.0.21",
@@ -82,6 +87,7 @@
     "recharts": "^2.15.1",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "yet-another-react-lightbox": "^3.20.2",

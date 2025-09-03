@@ -116,6 +116,16 @@ export async function authenticateUser(email: string, password: string): Promise
         associationName: membership.Association.name
       }
     }
+    
+    // Se não tem associação mas tem senha, pode ser um super admin global
+    if (user.email === 'admin@sativar.com.br') {
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: 'super_admin'
+      }
+    }
   }
 
   return null

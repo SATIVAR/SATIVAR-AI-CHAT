@@ -5,6 +5,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster as SonnerToaster } from 'sonner';
+import { initializeServices } from '@/lib/startup';
 
 const ptSans = PT_Sans({
   subsets: ["latin"],
@@ -23,6 +25,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Initialize services on app start
+  if (typeof window === 'undefined') {
+    initializeServices();
+  }
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body 
@@ -40,6 +47,12 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <SonnerToaster 
+            position="top-right"
+            richColors
+            closeButton
+            duration={5000}
+          />
         </ThemeProvider>
       </body>
     </html>

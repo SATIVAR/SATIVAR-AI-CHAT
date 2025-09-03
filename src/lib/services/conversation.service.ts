@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { ConversationData, ConversationMessage, ConversationStatus } from '@/lib/types';
 import { Message_senderType, Conversation_status } from '@prisma/client';
+import { notificationService } from './notification.service';
 
 export async function createConversation(patientId: string): Promise<{ success: boolean; data?: ConversationData; error?: string }> {
   try {
@@ -118,14 +119,36 @@ export async function updateConversationStatus(
   attendantId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await prisma.conversation.update({
+    const conversation = await prisma.conversation.update({
       where: { id: conversationId },
       data: {
         status,
         ...(attendantId && { attendantId }),
         ...(status === 'resolvida' && { endedAt: new Date() }),
       },
+      include: {
+        Patient: true,
+        Message: {
+          orderBy: { timestamp: 'desc' },
+          take: 1,
+        },
+      },
     });
+
+    // Send notifications for status changes
+    if (status === 'fila_humano') {
+      notificationService.notifyNewConversation(conversation as ConversationData);
+    } else if (status === 'com_humano') {
+      notificationService.notifyConversationUpdate(
+        conversation as ConversationData,
+        'Conversa assumida por atendente'
+      );
+    } else if (status === 'resolvida') {
+      notificationService.notifyConversationUpdate(
+        conversation as ConversationData,
+        'Conversa finalizada'
+      );
+    }
 
     return { success: true };
   } catch (error) {

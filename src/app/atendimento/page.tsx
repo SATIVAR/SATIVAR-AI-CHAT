@@ -15,21 +15,44 @@ import {
   FileText, 
   RefreshCw,
   Users,
-  AlertCircle 
+  AlertCircle,
+  Settings
 } from 'lucide-react';
 import { ConversationData } from '@/lib/types';
+import { NotificationBell } from '@/components/notifications/notification-bell';
+import { NotificationToast } from '@/components/notifications/notification-toast';
+import { NotificationSettings } from '@/components/notifications/notification-settings';
+import { NotificationStats } from '@/components/notifications/notification-stats';
+import { ConnectionStatus } from '@/components/notifications/connection-status';
 
 export default function AtendimentoPage() {
   const [queueConversations, setQueueConversations] = useState<ConversationData[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<ConversationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [attendantName] = useState('Atendente SATIZAP'); // In real app, get from auth
+  const [monitoringEnabled, setMonitoringEnabled] = useState(true);
 
   useEffect(() => {
     loadQueueConversations();
     const interval = setInterval(loadQueueConversations, 30000); // Refresh every 30s
+    
+    // Start queue monitoring
+    startQueueMonitoring();
+    
     return () => clearInterval(interval);
   }, []);
+
+  const startQueueMonitoring = async () => {
+    try {
+      await fetch('/api/notifications/monitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'start', intervalMinutes: 5 }),
+      });
+    } catch (error) {
+      console.error('Error starting queue monitoring:', error);
+    }
+  };
 
   const loadQueueConversations = async () => {
     try {
@@ -83,6 +106,8 @@ export default function AtendimentoPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Notification Toast Component */}
+      <NotificationToast enabled={monitoringEnabled} showOnlyHighPriority={false} />
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -100,6 +125,11 @@ export default function AtendimentoPage() {
                 <Users className="h-4 w-4" />
                 <span>{queueConversations.length} na fila</span>
               </div>
+              
+              <ConnectionStatus />
+              <NotificationBell />
+              <NotificationSettings />
+              
               <Button onClick={loadQueueConversations} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Atualizar
@@ -110,6 +140,11 @@ export default function AtendimentoPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Statistics Dashboard */}
+        <div className="mb-8">
+          <NotificationStats />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Queue List */}
           <div className="lg:col-span-2">

@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, LogOut, History, Building2, User } from 'lucide-react';
+import { Home, Users, LogOut, History, Building2, User, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
@@ -90,6 +90,10 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                     <nav className="flex flex-col items-center gap-4 p-4 flex-1">
                         <AdminNavLink href="/admin/dashboard" label="Dashboard">
                             <Home className="h-5 w-5" />
+                        </AdminNavLink>
+                        
+                        <AdminNavLink href="/admin/inbox" label="Visão Geral WhatsApp">
+                            <MessageCircle className="h-5 w-5" />
                         </AdminNavLink>
                         
                         {/* Mostrar links baseados no papel do usuário */}
